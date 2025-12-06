@@ -1,4 +1,4 @@
-import { CircuitGraph } from './circuit_graph.js';
+import { CircuitGraph } from './circuitGraph.js';
 import { Battery } from '../components/battery.js';
 import { Bulb } from './components/bulb.js';
 import { Wire } from '../components/wire.js';

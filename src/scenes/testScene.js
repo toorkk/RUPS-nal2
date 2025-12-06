@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CircuitGraph } from '../logic/circuit_graph.js';
+import { CircuitGraph } from '../logic/circuitGraph.js';
 import { Battery } from '../components/battery.js';
 import { Component } from '../components/component.js';
 import { Node } from '../logic/node.js';
