@@ -35,22 +35,16 @@ export default class LabScene extends Phaser.Scene {
     // stena
     // this.add.rectangle(0, 0, width, height - 150, 0xe8e8e8).setOrigin(0);
 
-    // Clean lab background – acoustic panel wall (final version)
-
-
     const panelW = 240;
     const panelH = 180;
     const panels = this.add.graphics({ x: 0, y: 0 });
     panels.setDepth(0);
 
-    // Slight random brightness variation so it doesn’t look too sterile
     const baseColor = 0xf2f2f2;
     const shadowColor = 0xe0e0e0;
 
     for (let py = 0; py < height + panelH; py += panelH) {
       for (let px = 0; px < width + panelW; px += panelW) {
-
-        // Randomly lighten/darken each panel a tiny bit
         const variation = Phaser.Math.Between(-8, 8);
         const color = Phaser.Display.Color.ValueToColor(baseColor);
         color.r += variation;
@@ -60,11 +54,9 @@ export default class LabScene extends Phaser.Scene {
         panels.fillStyle(color.color, 1);
         panels.fillRect(px + 8, py + 8, panelW - 16, panelH - 16);
 
-        // Panel border (very subtle)
         panels.lineStyle(2, 0xd5d5d5, 0.6);
         panels.strokeRect(px + 8, py + 8, panelW - 16, panelH - 16);
 
-        // Perforation dots (tiny and evenly spaced)
         panels.fillStyle(0xcccccc, 0.7);
         for (let dy = 30; dy < panelH - 20; dy += 28) {
           for (let dx = 30; dx < panelW - 20; dx += 28) {
@@ -76,7 +68,27 @@ export default class LabScene extends Phaser.Scene {
 
 
     // tla
-    this.add.rectangle(0, height - 90, width, 150, 0xd4c4a8).setOrigin(0).setDepth(2);
+    // this.add.rectangle(0, height - 90, width, 150, 0xd4c4a8).setOrigin(0).setDepth(2);
+    const floorY = height - 90;
+    const floorHeight = 90;
+
+    this.add.rectangle(0, floorY, width, floorHeight, 0xd8d0c7)
+        .setOrigin(0, 0)
+        .setDepth(2);
+
+    const speckles = this.add.graphics();
+    speckles.setDepth(2);
+
+    for (let i = 0; i < width * floorHeight / 100; i++) { 
+        const x = Phaser.Math.Between(0, width);
+        const y = Phaser.Math.Between(floorY, floorY + floorHeight);
+        const color = Phaser.Utils.Array.GetRandom([0x333333, 0x444444, 0x555555, 0x222222]);
+        const alpha = Phaser.Math.FloatBetween(0.5, 0.9);
+        const size = Phaser.Math.Between(1, 3);
+
+        speckles.fillStyle(color, alpha);
+        speckles.fillCircle(x, y + 5, size);
+    }
 
     // znanstveniki
     // helper za ustvarjanje okvirja z znanstvenikom
