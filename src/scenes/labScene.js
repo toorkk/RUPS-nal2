@@ -66,7 +66,6 @@ export default class LabScene extends Phaser.Scene {
       }
     }
 
-
     // tla
     // this.add.rectangle(0, height - 90, width, 150, 0xd4c4a8).setOrigin(0).setDepth(2);
     const floorY = height - 90;
@@ -205,10 +204,24 @@ export default class LabScene extends Phaser.Scene {
     const tableHeight = 250;
     
     // miza (del, ki se klikne)
-    const tableTop = this.add.rectangle(tableX, tableY, tableWidth, 30, 0x8b4513).setOrigin(0.5);
+    // const tableTop = this.add.rectangle(tableX, tableY, tableWidth, 30, 0x8b4513).setOrigin(0.5);
     
-    // delovna površina mize
-    const tableSurface = this.add.rectangle(tableX, tableY + 15, tableWidth - 30, tableHeight - 30, 0xa0826d).setOrigin(0.5, 0);
+    // // delovna površina mize
+    // const tableSurface = this.add.rectangle(tableX, tableY + 15, tableWidth - 30, tableHeight - 30, 0xa0826d).setOrigin(0.5, 0);
+
+    // 1. debel kovinsko-siv rob (namesto rjavega lesa)
+    this.add.rectangle(tableX, tableY + 8, tableWidth + 20, 20, 0xcccccc).setDepth(3);
+
+    // 2. svetla bleščica na robu (da je videti kovinsko)
+    this.add.rectangle(tableX, tableY + 3, tableWidth + 20, 8, 0xffffff).setAlpha(0.5).setDepth(3);
+
+    // 3. prava temno siva ESD podloga namesto rjave
+    const tableSurface = this.add.rectangle(tableX, tableY + 15, tableWidth - 20, tableHeight - 20, 0x444444)
+        .setOrigin(0.5, 0)
+        .setDepth(2);
+
+    // mini senca pod podlogo (da ni ploščato)
+    this.add.rectangle(tableX, tableY + 120, tableWidth - 20, 25, 0x000000).setAlpha(0.2).setDepth(2);  
     
     // mreža
     const gridGraphics = this.add.graphics();
@@ -232,12 +245,13 @@ export default class LabScene extends Phaser.Scene {
       gridGraphics.strokePath();
     }
 
+  
 
     // dekorativna orodja na mizi 
     const tools = [
-      { key: 'tool_pliers',      offsetX: -tableWidth / 3,   offsetY: -90,  angle: -10, scale: 0.2   },
-      { key: 'tool_screwdriver', offsetX: -tableWidth / 100, offsetY: -120, angle: 15,  scale: 0.015 },
-      { key: 'bulb',             offsetX: 150,               offsetY: -110, angle: -5,  scale: 0.04  }
+      { key: 'tool_pliers',      offsetX: -tableWidth / 3,   offsetY: -80,  angle: -10, scale: 0.2   },
+      { key: 'tool_screwdriver', offsetX: -tableWidth / 100, offsetY: -110, angle: 15,  scale: 0.015 },
+      { key: 'bulb',             offsetX: 150,               offsetY: -100, angle: -5,  scale: 0.04  }
     ];
 
     tools.forEach(tool => {
@@ -297,12 +311,11 @@ export default class LabScene extends Phaser.Scene {
     });
 
 
-    
     // nogice mize
-    const legWidth = 20;
-    const legHeight = 150;
-    this.add.rectangle(tableX - tableWidth/2 + 40, tableY + tableHeight/2 + 20, legWidth, legHeight, 0x654321);
-    this.add.rectangle(tableX + tableWidth/2 - 40, tableY + tableHeight/2 + 20, legWidth, legHeight, 0x654321);
+    // const legWidth = 20;
+    // const legHeight = 150;
+    // this.add.rectangle(tableX - tableWidth/2 + 40, tableY + tableHeight/2 + 20, legWidth, legHeight, 0x654321);
+    // this.add.rectangle(tableX + tableWidth/2 - 40, tableY + tableHeight/2 + 20, legWidth, legHeight, 0x654321);
     
     // interaktivnost mize
     const interactiveZone = this.add.zone(tableX, tableY + tableHeight/2, tableWidth, tableHeight)
@@ -312,7 +325,7 @@ export default class LabScene extends Phaser.Scene {
       fontSize: '24px',
       color: '#333',
       fontStyle: 'bold',
-      backgroundColor: '#ffffff',
+      backgroundColor: '#928888ff',
       padding: { x: 20, y: 10 }
     }).setOrigin(0.5);
     
@@ -334,11 +347,11 @@ export default class LabScene extends Phaser.Scene {
     });
     
     interactiveZone.on('pointerover', () => {
-      tableSurface.setFillStyle(0xb09070);
+      tableSurface.setFillStyle(0x777777);
     });
     
     interactiveZone.on('pointerout', () => {
-      tableSurface.setFillStyle(0xa0826d);
+      tableSurface.setFillStyle(0x444444);
     });
 
     const username = localStorage.getItem('username');
