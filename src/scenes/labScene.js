@@ -21,6 +21,9 @@ export default class LabScene extends Phaser.Scene {
         this.load.image('tool_pliers', 'src/assets/tools/pliers.png');
         this.load.image('tool_screwdriver', 'src/assets/tools/screwdriver.png');
         this.load.image('bulb', 'src/assets/tools/bulb.png');
+
+        this.load.image('sci_tesla',   'src/assets/scientists/tesla.jpg');
+        this.load.image('sci_edison',   'src/assets/scientists/edison.webp');
     }
 
   create() {
@@ -34,7 +37,115 @@ export default class LabScene extends Phaser.Scene {
     
     // tla
     this.add.rectangle(0, height - 150, width, 150, 0xd4c4a8).setOrigin(0);
-    
+
+    // znanstveniki
+    // helper za ustvarjanje okvirja z znanstvenikom
+    const createScientistFrame = (x, y, textureKey, name, description) => {
+      const frameWidth = 180;
+      const frameHeight = 220;
+
+      // okvir
+      const frame = this.add.rectangle(
+        x,
+        y,
+        frameWidth,
+        frameHeight,
+        0x000000,
+        0.25
+      )
+        .setStrokeStyle(4, 0x654321)
+        .setDepth(0);
+
+      // portret
+      const portrait = this.add.image(x, y, textureKey)
+        .setDisplaySize(frameWidth - 12, frameHeight - 12)
+        .setDepth(1)
+        .setInteractive({ useHandCursor: true });
+
+      // ime pod sliko
+      const nameText = this.add.text(
+        x,
+        y + frameHeight / 2 + 18,
+        name,
+        {
+          fontSize: '18px',
+          color: '#000000'
+        }
+      ).setOrigin(0.5).setDepth(1);
+
+      // tooltip background (črn pravokotnik)
+      const tooltipWidth = 260;
+      const tooltipHeight = 90;
+      const tooltipY = y - frameHeight / 2 + 300;
+
+      const tooltipBg = this.add.rectangle(
+        x,
+        tooltipY,
+        tooltipWidth,
+        tooltipHeight,
+        0x000000,
+        0.85
+      )
+        .setStrokeStyle(2, 0xffffff)
+        .setDepth(5)
+        .setVisible(false);
+
+      // tooltip text
+      const tooltipText = this.add.text(
+        tooltipBg.x,
+        tooltipBg.y,
+        description,
+        {
+          fontSize: '14px',
+          color: '#ffffff',
+          align: 'center',
+          wordWrap: { width: tooltipWidth - 20 }
+        }
+      ).setOrigin(0.5).setDepth(6).setVisible(false);
+
+      // animacija (da ni čisto statičen)
+      this.tweens.add({
+        targets: portrait,
+        angle: textureKey === 'sci_tesla' ? 1.5 : -1.5,
+        duration: 4000,
+        yoyo: true,
+        repeat: -1
+      });
+
+      // hover – pokaži opis
+      portrait.on('pointerover', () => {
+        tooltipBg.setVisible(true);
+        tooltipText.setVisible(true);
+      });
+
+      portrait.on('pointerout', () => {
+        tooltipBg.setVisible(false);
+        tooltipText.setVisible(false);
+      });
+    };
+
+    // dimenzije stene (zgornji del)
+    const wallHeight = height - 150;
+    const wallCenterY = wallHeight / 2;
+
+    // desno: Nikola Tesla
+    createScientistFrame(
+      width - 160,
+      wallCenterY - 40,
+      'sci_tesla',
+      'Nikola Tesla',
+      'Pionir izmeničnega toka, brezžičnega prenosa energije in mnogih drugih izumov.'
+    );
+
+    // levo: Michael Faraday (ali kdorkoli želiš)
+    createScientistFrame(
+      160,
+      wallCenterY - 40,
+      'sci_edison', // poskrbi, da je naložen v preload()
+      'Thomas Edison',
+      'Izumitelj električne žarnice za praktično uporabo in eden najpomembnejših inovatorjev na področju elektrike, zvoka in filma.'
+    );
+
     // miza
     const tableX = width / 2;
     const tableY = height / 2 + 50;
@@ -70,32 +181,69 @@ export default class LabScene extends Phaser.Scene {
     }
 
 
-    // dekorativna orodja na mizi (samo za izgled, ne interaktivna)
+    // dekorativna orodja na mizi 
     const tools = [
-      { key: 'tool_pliers',      offsetX: -tableWidth / 3, offsetY: -90, angle: -10, scale: 0.2 },
-      { key: 'tool_screwdriver', offsetX: -tableWidth / 100, offsetY: -120, angle: 15, scale: 0.015  },
-      { key: 'bulb', offsetX:  150, offsetY: -110, angle: -5, scale: 0.04 }
+      { key: 'tool_pliers',      offsetX: -tableWidth / 3,   offsetY: -90,  angle: -10, scale: 0.2   },
+      { key: 'tool_screwdriver', offsetX: -tableWidth / 100, offsetY: -120, angle: 15,  scale: 0.015 },
+      { key: 'bulb',             offsetX: 150,               offsetY: -110, angle: -5,  scale: 0.04  }
     ];
 
     tools.forEach(tool => {
       const img = this.add.image(
         tableX + tool.offsetX,
-        tableY + 30 + tool.offsetY, // 30 because tableSurface starts slightly below tableY
+        tableY + 30 + tool.offsetY, // 30, ker tableSurface začne malo pod tableY
         tool.key
       )
         .setScale(tool.scale)
         .setAngle(tool.angle)
-        .setDepth(2); // above the table surface
+        .setDepth(2)
+        .setInteractive({ useHandCursor: false }); // lahko daš true, če želiš roko
 
-      // Rahlo "dihanje" animacije (čisto minimalno, da živi)
-      this.tweens.add({
+      // shranimo "osnovne" vrednosti
+      img.setData('baseScale', tool.scale);
+      img.setData('baseY', img.y);
+
+      // "dihanje" – rahlo gor/dol
+      const breatheTween = this.tweens.add({
         targets: img,
         y: img.y - 3,
         duration: 2000,
         yoyo: true,
         repeat: -1
       });
+
+      img.setData('breatheTween', breatheTween);
+
+      // HOVER: miška gre preko orodja
+      img.on('pointerover', () => {
+        const bt = img.getData('breatheTween');
+        if (bt) bt.pause(); // ustavimo dihanje, da ni čudnih premikov
+
+        this.tweens.add({
+          targets: img,
+          y: img.getData('baseY') - 20,       // rahlo poskoči
+          scale: img.getData('baseScale') * 1.1, // malo večje
+          duration: 120,
+          ease: 'Power2'
+        });
+      });
+
+      // HOVER OUT: miška gre stran
+      img.on('pointerout', () => {
+        this.tweens.add({
+          targets: img,
+          y: img.getData('baseY'),
+          scale: img.getData('baseScale'),
+          duration: 120,
+          ease: 'Power2',
+          onComplete: () => {
+            const bt = img.getData('breatheTween');
+            if (bt) bt.resume(); // nadaljuj dihanje
+          }
+        });
+      });
     });
+
 
     
     // nogice mize
