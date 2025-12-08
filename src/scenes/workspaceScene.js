@@ -87,17 +87,17 @@ export default class WorkspaceScene extends Phaser.Scene {
       },
       {
         prompt: 'Sestavi preprosti nesklenjeni električni krog z baterijo, svetilko in stikalom.',
-        requiredComponents: ['baterija', 'svetilka', 'žica', 'stikalo-off'],
+        requiredComponents: ['baterija', 'svetilka', 'žica', 'stikalo'],
         theory: ['V nesklenjenem krogu je stikalo odprto, kar pomeni, da je električni tok prekinjen. Svetilka posledično zato ne sveti.']
       },
       {
         prompt: 'Sestavi preprosti sklenjeni električni krog z baterijo, svetilko in stikalom.',
-        requiredComponents: ['baterija', 'svetilka', 'žica', 'stikalo-on'],
+        requiredComponents: ['baterija', 'svetilka', 'žica', 'stikalo'],
         theory: ['V sklenjenem krogu je stikalo zaprto, kar pomeni, da lahko električni tok teče neovirano. Torej v tem primeru so vrata zaprta.']
       },
       {
         prompt: 'Sestavi električni krog z baterijo, svetilko in stikalom, ki ga lahko ugašaš in prižigaš.',
-        requiredComponents: ['baterija', 'svetilka', 'žica', 'stikalo-on', 'stikalo-off'],
+        requiredComponents: ['baterija', 'svetilka', 'žica', 'stikalo', 'stikalo'],
         theory: ['Stikalo nam omogoča nadzor nad pretokom električnega toka. Ko je stikalo zaprto, tok teče in posledično svetilka sveti. Kadar pa je stikalo odprto, tok ne teče in se svetilka ugasne. To lahko primerjamo z vklapljanjem in izklapljanjem električnih naprav v naših domovih.']
       },
       {
@@ -184,14 +184,36 @@ export default class WorkspaceScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // komponente v stranski vrstici
-    this.createComponent(panelWidth / 2, 100, 'baterija', 0xffcc00);
-    this.createComponent(panelWidth / 2, 180, 'upor', 0xff6600);
-    this.createComponent(panelWidth / 2, 260, 'svetilka', 0xff0000);
-    this.createComponent(panelWidth / 2, 340, 'stikalo-on', 0x666666);
-    this.createComponent(panelWidth / 2, 420, 'stikalo-off', 0x666666);
-    this.createComponent(panelWidth / 2, 500, 'žica', 0x0066cc);
-    this.createComponent(panelWidth / 2, 580, 'ampermeter', 0x00cc66);
-    this.createComponent(panelWidth / 2, 660, 'voltmeter', 0x00cc66);
+    // this.createComponent(panelWidth / 2, 100, 'baterija', 0xffcc00);
+    // this.createComponent(panelWidth / 2, 180, 'upor', 0xff6600);
+    // this.createComponent(panelWidth / 2, 260, 'svetilka', 0xff0000);
+    // this.createComponent(panelWidth / 2, 420, 'stikalo', 0x666666);
+    // this.createComponent(panelWidth / 2, 500, 'žica', 0x0066cc);
+    // this.createComponent(panelWidth / 2, 580, 'ampermeter', 0x00cc66);
+    // this.createComponent(panelWidth / 2, 660, 'voltmeter', 0x00cc66);
+
+    const startY = 100;     // first item position
+    const spacing = 90;    // distance between items
+
+    const paletteItems = [
+      { type: 'baterija', color: 0xffcc00 },
+      { type: 'upor', color: 0xff6600 },
+      { type: 'svetilka', color: 0xff0000 },
+      { type: 'stikalo', color: 0x666666 },
+      { type: 'žica', color: 0x0066cc },
+      { type: 'ampermeter', color: 0x00cc66 },
+      { type: 'voltmeter', color: 0x00cc66 }
+    ];
+
+    paletteItems.forEach((item, index) => {
+      this.createComponent(
+        panelWidth / 2,
+        startY + index * spacing,
+        item.type,
+        item.color
+      );
+    });
+
 
     const backButton = this.add.text(12, 10, '↩ Nazaj', {
       fontFamily: 'Arial',
@@ -387,8 +409,8 @@ export default class WorkspaceScene extends Phaser.Scene {
         'baterija': 'Napetost: 9 V\nVir električne energije',
         'upor': 'Upornost: 220 Ω\nOmejuje tok',
         'svetilka': 'Upornost: 100 Ω\nPretvarja v svetlobo',
-        'stikalo-on': 'Stanje: ZAPRTO\nDovoljuje tok',
-        'stikalo-off': 'Stanje: ODPRTO\nPrepreči tok',
+        'stikalo': 'Stanje: ZAPRTO\nDovoljuje tok\nStanje: ODPRTO\nPrepreči tok',
+        //'stikalo-off': 'Stanje: ODPRTO\nPrepreči tok',
         'žica': 'Upornost: 1 Ω\nPovezuje komponente',
         'ampermeter': 'Meri električni tok\nEnota: amperi (A)',
         'voltmeter': 'Meri napetost\nEnota: volti (V)'
@@ -556,40 +578,61 @@ export default class WorkspaceScene extends Phaser.Scene {
         component.setData('logicComponent', comp);
         break;
 
-      case 'stikalo-on':
-        id = "switch_" + this.getRandomInt(1000, 9999);
-        comp = new Switch(
-          id,
-          new Node(id + "_start", -40, 0),
-          new Node(id + "_end", 40, 0),
-          true
-        )
-        comp.type = 'switch';
-        comp.localStart = { x: -40, y: 0 };
-        comp.localEnd = { x: 40, y: 0 };
-        componentImage = this.add.image(0, 0, 'stikalo-on')
-          .setOrigin(0.5)
-          .setDisplaySize(100, 100);
-        component.add(componentImage);
-        component.setData('logicComponent', comp)
-        break;
+      // case 'stikalo-on':
+      //   id = "switch_" + this.getRandomInt(1000, 9999);
+      //   comp = new Switch(
+      //     id,
+      //     new Node(id + "_start", -40, 0),
+      //     new Node(id + "_end", 40, 0),
+      //     true
+      //   )
+      //   comp.type = 'switch';
+      //   comp.localStart = { x: -40, y: 0 };
+      //   comp.localEnd = { x: 40, y: 0 };
+      //   componentImage = this.add.image(0, 0, 'stikalo-on')
+      //     .setOrigin(0.5)
+      //     .setDisplaySize(100, 100);
+      //   component.add(componentImage);
+      //   component.setData('logicComponent', comp)
+      //   break;
 
-      case 'stikalo-off':
+      // case 'stikalo-off':
+      //   id = "switch_" + this.getRandomInt(1000, 9999);
+      //   comp = new Switch(
+      //     id,
+      //     new Node(id + "_start", -40, 0),
+      //     new Node(id + "_end", 40, 0),
+      //     false
+      //   )
+      //   comp.type = 'switch';
+      //   comp.localStart = { x: -40, y: 0 };
+      //   comp.localEnd = { x: 40, y: 0 };
+      //   componentImage = this.add.image(0, 0, 'stikalo-off')
+      //     .setOrigin(0.5)
+      //     .setDisplaySize(100, 100);
+      //   component.add(componentImage);
+      //   component.setData('logicComponent', comp)
+      //   break;
+
+      case 'stikalo':
         id = "switch_" + this.getRandomInt(1000, 9999);
         comp = new Switch(
           id,
           new Node(id + "_start", -40, 0),
           new Node(id + "_end", 40, 0),
-          false
-        )
+          false // start OFF
+        );
         comp.type = 'switch';
         comp.localStart = { x: -40, y: 0 };
         comp.localEnd = { x: 40, y: 0 };
-        componentImage = this.add.image(0, 0, 'stikalo-off')
+
+        componentImage = this.add.image(0, 0, 'stikalo-off') // default OFF sprite
           .setOrigin(0.5)
-          .setDisplaySize(100, 100);
+          .setDisplaySize(100, 100)
+          .setName('switchImage'); // name so we can find it later
+
         component.add(componentImage);
-        component.setData('logicComponent', comp)
+        component.setData('logicComponent', comp);
         break;
 
       case 'žica':
@@ -740,8 +783,47 @@ export default class WorkspaceScene extends Phaser.Scene {
       });
     });
 
-    component.on('pointerdown', () => {
+    // component.on('pointerdown', () => {
+    //   if (!component.getData('isInPanel')) {
+    //     const currentRotation = component.getData('rotation');
+    //     const newRotation = (currentRotation + 90) % 360;
+    //     component.setData('rotation', newRotation);
+    //     component.setData('isRotated', !component.getData('isRotated'));
+
+    //     this.tweens.add({
+    //       targets: component,
+    //       angle: newRotation,
+    //       duration: 150,
+    //       ease: 'Cubic.easeOut',
+    //       onComplete: () => {
+    //         this.updateLogicNodePositions(component);
+    //       }
+    //     });
+    //   }
+    // });
+
+    component.on('pointerdown', (pointer) => {
       if (!component.getData('isInPanel')) {
+        const logicComp = component.getData('logicComponent');
+
+        // If this is a switch, toggle it
+        if (logicComp && logicComp.type === 'switch') {
+          logicComp.toggle();
+
+          // Find the image and swap its texture
+          const img = component.getByName('switchImage') 
+            || component.list.find(child => child.type === 'Image');
+
+          if (img) {
+            img.setTexture(logicComp.is_on ? 'stikalo-on' : 'stikalo-off');
+          }
+
+          // (optional) re-run simulation here if you want instant feedback:
+          // this.runSimulation();
+          return; // do not rotate when clicking a switch
+        }
+
+        // Default behavior: rotate component
         const currentRotation = component.getData('rotation');
         const newRotation = (currentRotation + 90) % 360;
         component.setData('rotation', newRotation);
@@ -758,6 +840,7 @@ export default class WorkspaceScene extends Phaser.Scene {
         });
       }
     });
+
 
     component.on('pointerover', () => {
       component.setScale(1.1);
