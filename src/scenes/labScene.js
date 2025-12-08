@@ -30,13 +30,53 @@ export default class LabScene extends Phaser.Scene {
     const { width, height } = this.cameras.main;
     
     // ozadje laboratorija
-    this.add.rectangle(0, 0, width, height, 0xf0f0f0).setOrigin(0);
+    this.add.rectangle(0, 0, width, height, 0xf0f0f0).setOrigin(0).setDepth(-1);
     
     // stena
-    this.add.rectangle(0, 0, width, height - 150, 0xe8e8e8).setOrigin(0);
-    
+    // this.add.rectangle(0, 0, width, height - 150, 0xe8e8e8).setOrigin(0);
+
+    // Clean lab background – acoustic panel wall (final version)
+
+
+    const panelW = 240;
+    const panelH = 180;
+    const panels = this.add.graphics({ x: 0, y: 0 });
+    panels.setDepth(0);
+
+    // Slight random brightness variation so it doesn’t look too sterile
+    const baseColor = 0xf2f2f2;
+    const shadowColor = 0xe0e0e0;
+
+    for (let py = 0; py < height + panelH; py += panelH) {
+      for (let px = 0; px < width + panelW; px += panelW) {
+
+        // Randomly lighten/darken each panel a tiny bit
+        const variation = Phaser.Math.Between(-8, 8);
+        const color = Phaser.Display.Color.ValueToColor(baseColor);
+        color.r += variation;
+        color.g += variation;
+        color.b += variation;
+
+        panels.fillStyle(color.color, 1);
+        panels.fillRect(px + 8, py + 8, panelW - 16, panelH - 16);
+
+        // Panel border (very subtle)
+        panels.lineStyle(2, 0xd5d5d5, 0.6);
+        panels.strokeRect(px + 8, py + 8, panelW - 16, panelH - 16);
+
+        // Perforation dots (tiny and evenly spaced)
+        panels.fillStyle(0xcccccc, 0.7);
+        for (let dy = 30; dy < panelH - 20; dy += 28) {
+          for (let dx = 30; dx < panelW - 20; dx += 28) {
+            panels.fillCircle(px + 8 + dx, py + 8 + dy, 3);
+          }
+        }
+      }
+    }
+
+
     // tla
-    this.add.rectangle(0, height - 150, width, 150, 0xd4c4a8).setOrigin(0);
+    this.add.rectangle(0, height - 90, width, 150, 0xd4c4a8).setOrigin(0).setDepth(2);
 
     // znanstveniki
     // helper za ustvarjanje okvirja z znanstvenikom
