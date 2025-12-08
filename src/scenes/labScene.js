@@ -17,6 +17,10 @@ export default class LabScene extends Phaser.Scene {
         this.load.image('avatar9', 'src/avatars/avatar9.png');
         this.load.image('avatar10', 'src/avatars/avatar10.png');
         this.load.image('avatar11', 'src/avatars/avatar11.png');
+
+        this.load.image('tool_pliers', 'src/assets/tools/pliers.png');
+        this.load.image('tool_screwdriver', 'src/assets/tools/screwdriver.png');
+        this.load.image('bulb', 'src/assets/tools/bulb.png');
     }
 
   create() {
@@ -64,6 +68,35 @@ export default class LabScene extends Phaser.Scene {
       gridGraphics.lineTo(gridEndX, y);
       gridGraphics.strokePath();
     }
+
+
+    // dekorativna orodja na mizi (samo za izgled, ne interaktivna)
+    const tools = [
+      { key: 'tool_pliers',      offsetX: -tableWidth / 3, offsetY: -90, angle: -10, scale: 0.2 },
+      { key: 'tool_screwdriver', offsetX: -tableWidth / 100, offsetY: -120, angle: 15, scale: 0.015  },
+      { key: 'bulb', offsetX:  150, offsetY: -110, angle: -5, scale: 0.04 }
+    ];
+
+    tools.forEach(tool => {
+      const img = this.add.image(
+        tableX + tool.offsetX,
+        tableY + 30 + tool.offsetY, // 30 because tableSurface starts slightly below tableY
+        tool.key
+      )
+        .setScale(tool.scale)
+        .setAngle(tool.angle)
+        .setDepth(2); // above the table surface
+
+      // Rahlo "dihanje" animacije (čisto minimalno, da živi)
+      this.tweens.add({
+        targets: img,
+        y: img.y - 3,
+        duration: 2000,
+        yoyo: true,
+        repeat: -1
+      });
+    });
+
     
     // nogice mize
     const legWidth = 20;
@@ -75,7 +108,7 @@ export default class LabScene extends Phaser.Scene {
     const interactiveZone = this.add.zone(tableX, tableY + tableHeight/2, tableWidth, tableHeight)
       .setInteractive({ useHandCursor: true });
     
-    const instruction = this.add.text(tableX, tableY - 80, 'Klikni na mizo in začni graditi svoj električni krog!', {
+    const instruction = this.add.text(tableX, tableY - 200, 'Klikni na mizo in začni graditi svoj električni krog!', {
       fontSize: '24px',
       color: '#333',
       fontStyle: 'bold',
