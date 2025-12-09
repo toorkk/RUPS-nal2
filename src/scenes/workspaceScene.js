@@ -9,6 +9,10 @@ import { Switch } from '../components/switch';
 import { Resistor } from '../components/resistor';
 import { CircuitVisuals } from '../logic/circuitVisuals';
 import { CurrentFlowAnimation } from '../logic/currentFlowAnimation';
+import { spawnNandForCurrentChallenge } from '../logic/nand.js';
+import { spawnNorForCurrentChallenge } from '../logic/nor.js';
+import { spawnXorForCurrentChallenge } from '../logic/xor.js';
+
 
 
 export default class WorkspaceScene extends Phaser.Scene {
@@ -83,6 +87,34 @@ export default class WorkspaceScene extends Phaser.Scene {
 
     this.challenges = [
       {
+        prompt: 'Razišči delovanje XOR logičnih vrat. S kliki spreminjaj vhoda A in B ter opazuj izhod C.',
+        requiredComponents: ['xor'],
+        theory: [
+          'XOR (EXCLUSIVE OR) ima izhod 1 samo takrat, ko sta vhoda A in B RAZLIČNA.',
+          'Če sta oba vhoda 0 ali oba 1, je izhod 0.',
+          'XOR se zelo pogosto uporablja v seštevalnikih in v kriptografiji.'
+        ],
+        logicOnly: true,
+        logicXor: true
+      },
+
+
+
+      {
+        prompt: 'Razišči delovanje NOR logičnih vrat. S kliki spreminjaj vhoda A in B ter opazuj izhod C.',
+        requiredComponents: ['nor'],
+        theory: [
+          'NOR (NOT-OR) ima izhod 1 samo takrat, ko sta oba vhoda 0.',
+          'V vseh ostalih primerih je izhod 0.',
+          'NOR je, podobno kot NAND, univerzalna logična vrata – iz njih lahko zgradimo vsa ostala vrata.'
+        ],
+        logicOnly: true,     // še vedno logična naloga
+        logicNor: true       // dodatna oznaka, da je to NOR, ne NAND
+      },
+
+
+
+      {
         prompt: 'Razišči delovanje NAND logičnih vrat. S kliki spreminjaj vhoda A in B ter opazuj izhod C.',
         requiredComponents: ['nand'],
         theory: [
@@ -90,7 +122,8 @@ export default class WorkspaceScene extends Phaser.Scene {
           'V vseh ostalih primerih je izhod 1.',
           'NAND je pomemben, ker iz njega lahko sestavimo vsa druga logična vrata.'
         ],
-        logicOnly: true
+        logicOnly: true,
+        logicNand: true
       },
 
 
@@ -251,7 +284,17 @@ export default class WorkspaceScene extends Phaser.Scene {
     this.placedComponents = [];
     this.gridSize = 40;
 
-    this.spawnNandForCurrentChallenge()
+    // this.spawnNandForCurrentChallenge()
+
+    this.spawnNandForCurrentChallenge = () => spawnNandForCurrentChallenge(this);
+    this.spawnNandForCurrentChallenge();
+
+    this.spawnNorForCurrentChallenge = () => spawnNorForCurrentChallenge(this);
+    this.spawnNorForCurrentChallenge();
+
+    this.spawnXorForCurrentChallenge = () => spawnXorForCurrentChallenge(this);
+    this.spawnXorForCurrentChallenge();
+
 
     console.log(JSON.parse(localStorage.getItem('users')));
   }
@@ -934,110 +977,14 @@ component.on('pointerup', (pointer) => {
       this.promptText.setText(this.challenges[this.currentChallengeIndex].prompt);
 
       this.spawnNandForCurrentChallenge();
+      this.spawnNorForCurrentChallenge();
+      this.spawnXorForCurrentChallenge();
     }
     else {
       this.promptText.setText('Vse naloge so uspešno opravljene! Čestitke!');
       localStorage.removeItem('currentChallengeIndex');
     }
   }
-
-  
-
-
-
-  spawnNandForCurrentChallenge() {
-    const current = this.challenges[this.currentChallengeIndex];
-    console.log('spawnNandForCurrentChallenge called for index:', this.currentChallengeIndex, current);
-
-    if (!current || current.logicOnly !== true) {
-      console.log('Not a logicOnly challenge, skipping NAND spawn.');
-      return;
-    }
-
-    const { width, height } = this.cameras.main;
-    const panelWidth = 150; // uporabi isto, kot ga imaš za levi panel
-
-    const x = panelWidth + (width - panelWidth) / 2;
-    const y = height / 2;
-
-    this.nandState = { a: 0, b: 0 };
-
-    const container = this.add.container(x, y).setDepth(50);
-    this.nandContainer = container;
-
-    const g = this.add.graphics();
-    g.fillStyle(0xffffff, 1);
-    g.lineStyle(3, 0x000000, 1);
-    g.fillRoundedRect(-50, -30, 100, 60, 12);
-    g.strokeRoundedRect(-50, -30, 100, 60, 12);
-    g.strokeCircle(55, 0, 6);
-
-    const title = this.add.text(0, 0, 'NAND', {
-      fontSize: '14px',
-      color: '#000000',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
-
-    container.add([g, title]);
-
-    const r = 10;
-
-    const circleA = this.add.circle(-65, -12, r, 0x666666)
-      .setInteractive({ useHandCursor: true });
-    const labelA = this.add.text(-80, -12, 'A', {
-      fontSize: '14px',
-      color: '#000000'
-    }).setOrigin(0.5);
-
-    const circleB = this.add.circle(-65, 12, r, 0x666666)
-      .setInteractive({ useHandCursor: true });
-    const labelB = this.add.text(-80, 12, 'B', {
-      fontSize: '14px',
-      color: '#000000'
-    }).setOrigin(0.5);
-
-    const circleC = this.add.circle(75, 0, r, 0x666666);
-    const labelC = this.add.text(92, 0, 'C', {
-      fontSize: '14px',
-      color: '#000000'
-    }).setOrigin(0.5);
-
-    container.add([circleA, labelA, circleB, labelB, circleC, labelC]);
-
-    const setCircleState = () => {
-      const on = 0x00aa00;
-      const off = 0x666666;
-      const { a, b } = this.nandState;
-      const c = !(a && b) ? 1 : 0;
-
-      circleA.setFillStyle(a ? on : off);
-      circleB.setFillStyle(b ? on : off);
-      circleC.setFillStyle(c ? on : off);
-    };
-
-    setCircleState();
-
-    circleA.on('pointerdown', () => {
-      this.nandState.a = this.nandState.a ? 0 : 1;
-      setCircleState();
-    });
-
-    circleB.on('pointerdown', () => {
-      this.nandState.b = this.nandState.b ? 0 : 1;
-      setCircleState();
-    });
-
-    container.setData('type', 'nand');
-    if (!this.placedComponents) this.placedComponents = [];
-    this.placedComponents.push(container);
-  }
-
-
-
-
-
-
-
 
   addPoints(points) {
     const user = localStorage.getItem('username');
@@ -1052,7 +999,7 @@ component.on('pointerup', (pointer) => {
   showTheory(theoryText) {
     const { width, height } = this.cameras.main;
 
-    this.theoryBack = this.add.rectangle(width / 2, height / 2, width - 100, 150, 0x000000, 0.8)
+    this.theoryBack = this.add.rectangle(width / 2, height /2, width + 100, 150, 0x000000, 0.8)
       .setOrigin(0.5)
       .setDepth(10);
 
