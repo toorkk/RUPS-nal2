@@ -804,44 +804,57 @@ export default class WorkspaceScene extends Phaser.Scene {
     //   }
     // });
 
-    component.on('pointerdown', (pointer) => {
-      if (!component.getData('isInPanel')) {
-        const logicComp = component.getData('logicComponent');
+component.on('pointerdown', (pointer) => {
+  if (!component.getData('isInPanel')) {
+    // Store the time when pointer was pressed
+    component.setData('pointerDownTime', this.time.now);
+  }
+});
 
-        // If this is a switch, toggle it
-        if (logicComp && logicComp.type === 'switch') {
-          logicComp.toggle();
-
-          // Find the image and swap its texture
-          const img = component.getByName('switchImage') 
-            || component.list.find(child => child.type === 'Image');
-
-          if (img) {
-            img.setTexture(logicComp.is_on ? 'stikalo-on' : 'stikalo-off');
-          }
-
-          // (optional) re-run simulation here if you want instant feedback:
-          // this.runSimulation();
-          return; // do not rotate when clicking a switch
+component.on('pointerup', (pointer) => {
+  if (!component.getData('isInPanel')) {
+    const pointerDownTime = component.getData('pointerDownTime');
+    const pressDuration = this.time.now - pointerDownTime;
+    
+    // Only rotate if press was less than 100ms 
+    if (pressDuration < 100) {
+      const logicComp = component.getData('logicComponent');
+      
+      // If this is a switch, toggle it
+      if (logicComp && logicComp.type === 'switch') {
+        logicComp.toggle();
+        
+        // Find the image and swap its texture
+        const img = component.getByName('switchImage') 
+          || component.list.find(child => child.type === 'Image');
+        
+        if (img) {
+          img.setTexture(logicComp.is_on ? 'stikalo-on' : 'stikalo-off');
         }
-
-        // Default behavior: rotate component
-        const currentRotation = component.getData('rotation');
-        const newRotation = (currentRotation + 90) % 360;
-        component.setData('rotation', newRotation);
-        component.setData('isRotated', !component.getData('isRotated'));
-
-        this.tweens.add({
-          targets: component,
-          angle: newRotation,
-          duration: 150,
-          ease: 'Cubic.easeOut',
-          onComplete: () => {
-            this.updateLogicNodePositions(component);
-          }
-        });
+        
+        // (optional) re-run simulation here if you want instant feedback:
+        // this.runSimulation();
+        return; // do not rotate when clicking a switch
       }
-    });
+      
+      // Default behavior: rotate component
+      const currentRotation = component.angle;
+      const newRotation = currentRotation + 90;
+      component.setData('rotation', newRotation);
+      component.setData('isRotated', !component.getData('isRotated'));
+      
+      this.tweens.add({
+        targets: component,
+        angle: newRotation,
+        duration: 150,
+        ease: 'Cubic.easeOut',
+        onComplete: () => {
+          this.updateLogicNodePositions(component);
+        }
+      });
+    }
+  }
+});
 
 
     component.on('pointerover', () => {
