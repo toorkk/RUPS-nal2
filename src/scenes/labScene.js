@@ -432,6 +432,31 @@ export default class LabScene extends Phaser.Scene {
             this.scene.start('ScoreboardScene', {cameFromMenu: true});
         });
 
+
+    const levelButtonBg = this.add.graphics();
+    levelButtonBg.fillStyle(0x3399ff, 1);
+    levelButtonBg.fillRoundedRect(width - buttonWidth - rightMargin, topMargin + buttonHeight + 20, buttonWidth, buttonHeight, cornerRadius);
+    const levelButton = this.add.text(width - buttonWidth / 2 - rightMargin, topMargin + buttonHeight + 20 + buttonHeight / 2, 'Izbira levela', {
+        fontFamily: 'Arial',
+        fontSize: '20px',
+        color: '#ffffff'
+    })
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerover', () => {
+            levelButtonBg.clear();
+            levelButtonBg.fillStyle(0x0f5cad, 1);
+            levelButtonBg.fillRoundedRect(width - buttonWidth - rightMargin, topMargin + buttonHeight + 20, buttonWidth, buttonHeight, cornerRadius);
+        })
+        .on('pointerout', () => {
+            levelButtonBg.clear();
+            levelButtonBg.fillStyle(0x3399ff, 1);
+            levelButtonBg.fillRoundedRect(width - buttonWidth - rightMargin, topMargin + buttonHeight + 20, buttonWidth, buttonHeight, cornerRadius);
+        })
+        .on('pointerdown', () => {
+            this.scene.start('LevelScene');
+        });
+
     // this.input.keyboard.on('keydown-ESC', () => {
     //     this.scene.start('MenuScene');
     // });

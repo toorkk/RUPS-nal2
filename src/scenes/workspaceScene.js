@@ -18,6 +18,7 @@ export default class WorkspaceScene extends Phaser.Scene {
   init() {
     const savedIndex = localStorage.getItem('currentChallengeIndex');
     this.currentChallengeIndex = savedIndex !== null ? parseInt(savedIndex) : 0;
+
   }
 
   preload() {
@@ -167,6 +168,7 @@ export default class WorkspaceScene extends Phaser.Scene {
       return { bg, text };
     };
 
+    makeButton(width - 140, 25, 'Izbira levela', () => this.scene.start('LevelScene'));
     makeButton(width - 140, 75, 'Lestvica', () => this.scene.start('ScoreboardScene', { cameFromMenu: false }));
     makeButton(width - 140, 125, 'Preveri krog', () => this.checkCircuit());
     makeButton(width - 140, 175, 'Simulacija', () => this.runSimulation());
@@ -904,7 +906,17 @@ export default class WorkspaceScene extends Phaser.Scene {
     this.checkText.setStyle({ color: '#00aa00' });
     this.checkText.setText('Čestitke! Krog je pravilen.');
     this.addPoints(10);
+    const currentLevel = parseInt(localStorage.getItem('currentChallengeIndex') || '0');
+    const highestReached = parseInt(localStorage.getItem('highestChallengeIndex') || '0');
 
+    // If they completed a level at or above their highest, unlock the next one
+    if (currentLevel >= highestReached) {
+        const nextLevel = currentLevel + 1;
+        localStorage.setItem('highestChallengeIndex', nextLevel.toString());
+        // Optionally auto-advance to next level
+        localStorage.setItem('currentChallengeIndex', nextLevel.toString());
+    }
+    
     if (currentChallenge.theory) {
       this.showTheory(currentChallenge.theory);
     }
