@@ -10,6 +10,7 @@ import { Resistor } from '../components/resistor';
 import { CircuitVisuals } from '../logic/circuitVisuals';
 import { CurrentFlowAnimation } from '../logic/currentFlowAnimation';
 
+
 export default class WorkspaceScene extends Phaser.Scene {
   constructor() {
     super('WorkspaceScene');
@@ -81,6 +82,18 @@ export default class WorkspaceScene extends Phaser.Scene {
     this.currentFlowParticles = [];
 
     this.challenges = [
+      {
+        prompt: 'Razišči delovanje NAND logičnih vrat. S kliki spreminjaj vhoda A in B ter opazuj izhod C.',
+        requiredComponents: ['nand'],
+        theory: [
+          'NAND (NOT-AND) ima izhod 0 samo takrat, ko sta oba vhoda 1.',
+          'V vseh ostalih primerih je izhod 1.',
+          'NAND je pomemben, ker iz njega lahko sestavimo vsa druga logična vrata.'
+        ],
+        logicOnly: true
+      },
+
+
       {
         prompt: 'Sestavi preprosti električni krog z baterijo in svetilko.',
         requiredComponents: ['baterija', 'svetilka', 'žica', 'žica', 'žica', 'žica', 'žica', 'žica'],
@@ -185,15 +198,6 @@ export default class WorkspaceScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    // komponente v stranski vrstici
-    // this.createComponent(panelWidth / 2, 100, 'baterija', 0xffcc00);
-    // this.createComponent(panelWidth / 2, 180, 'upor', 0xff6600);
-    // this.createComponent(panelWidth / 2, 260, 'svetilka', 0xff0000);
-    // this.createComponent(panelWidth / 2, 420, 'stikalo', 0x666666);
-    // this.createComponent(panelWidth / 2, 500, 'žica', 0x0066cc);
-    // this.createComponent(panelWidth / 2, 580, 'ampermeter', 0x00cc66);
-    // this.createComponent(panelWidth / 2, 660, 'voltmeter', 0x00cc66);
-
     const startY = 100;     // first item position
     const spacing = 90;    // distance between items
 
@@ -204,7 +208,7 @@ export default class WorkspaceScene extends Phaser.Scene {
       { type: 'stikalo', color: 0x666666 },
       { type: 'žica', color: 0x0066cc },
       { type: 'ampermeter', color: 0x00cc66 },
-      { type: 'voltmeter', color: 0x00cc66 }
+      { type: 'voltmeter', color: 0x00cc66 },
     ];
 
     paletteItems.forEach((item, index) => {
@@ -246,6 +250,8 @@ export default class WorkspaceScene extends Phaser.Scene {
     // shrani komponente na mizi
     this.placedComponents = [];
     this.gridSize = 40;
+
+    this.spawnNandForCurrentChallenge()
 
     console.log(JSON.parse(localStorage.getItem('users')));
   }
@@ -579,42 +585,6 @@ export default class WorkspaceScene extends Phaser.Scene {
         component.add(componentImage);
         component.setData('logicComponent', comp);
         break;
-
-      // case 'stikalo-on':
-      //   id = "switch_" + this.getRandomInt(1000, 9999);
-      //   comp = new Switch(
-      //     id,
-      //     new Node(id + "_start", -40, 0),
-      //     new Node(id + "_end", 40, 0),
-      //     true
-      //   )
-      //   comp.type = 'switch';
-      //   comp.localStart = { x: -40, y: 0 };
-      //   comp.localEnd = { x: 40, y: 0 };
-      //   componentImage = this.add.image(0, 0, 'stikalo-on')
-      //     .setOrigin(0.5)
-      //     .setDisplaySize(100, 100);
-      //   component.add(componentImage);
-      //   component.setData('logicComponent', comp)
-      //   break;
-
-      // case 'stikalo-off':
-      //   id = "switch_" + this.getRandomInt(1000, 9999);
-      //   comp = new Switch(
-      //     id,
-      //     new Node(id + "_start", -40, 0),
-      //     new Node(id + "_end", 40, 0),
-      //     false
-      //   )
-      //   comp.type = 'switch';
-      //   comp.localStart = { x: -40, y: 0 };
-      //   comp.localEnd = { x: 40, y: 0 };
-      //   componentImage = this.add.image(0, 0, 'stikalo-off')
-      //     .setOrigin(0.5)
-      //     .setDisplaySize(100, 100);
-      //   component.add(componentImage);
-      //   component.setData('logicComponent', comp)
-      //   break;
 
       case 'stikalo':
         id = "switch_" + this.getRandomInt(1000, 9999);
@@ -962,12 +932,112 @@ component.on('pointerup', (pointer) => {
 
     if (this.currentChallengeIndex < this.challenges.length) {
       this.promptText.setText(this.challenges[this.currentChallengeIndex].prompt);
+
+      this.spawnNandForCurrentChallenge();
     }
     else {
       this.promptText.setText('Vse naloge so uspešno opravljene! Čestitke!');
       localStorage.removeItem('currentChallengeIndex');
     }
   }
+
+  
+
+
+
+  spawnNandForCurrentChallenge() {
+    const current = this.challenges[this.currentChallengeIndex];
+    console.log('spawnNandForCurrentChallenge called for index:', this.currentChallengeIndex, current);
+
+    if (!current || current.logicOnly !== true) {
+      console.log('Not a logicOnly challenge, skipping NAND spawn.');
+      return;
+    }
+
+    const { width, height } = this.cameras.main;
+    const panelWidth = 150; // uporabi isto, kot ga imaš za levi panel
+
+    const x = panelWidth + (width - panelWidth) / 2;
+    const y = height / 2;
+
+    this.nandState = { a: 0, b: 0 };
+
+    const container = this.add.container(x, y).setDepth(50);
+    this.nandContainer = container;
+
+    const g = this.add.graphics();
+    g.fillStyle(0xffffff, 1);
+    g.lineStyle(3, 0x000000, 1);
+    g.fillRoundedRect(-50, -30, 100, 60, 12);
+    g.strokeRoundedRect(-50, -30, 100, 60, 12);
+    g.strokeCircle(55, 0, 6);
+
+    const title = this.add.text(0, 0, 'NAND', {
+      fontSize: '14px',
+      color: '#000000',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    container.add([g, title]);
+
+    const r = 10;
+
+    const circleA = this.add.circle(-65, -12, r, 0x666666)
+      .setInteractive({ useHandCursor: true });
+    const labelA = this.add.text(-80, -12, 'A', {
+      fontSize: '14px',
+      color: '#000000'
+    }).setOrigin(0.5);
+
+    const circleB = this.add.circle(-65, 12, r, 0x666666)
+      .setInteractive({ useHandCursor: true });
+    const labelB = this.add.text(-80, 12, 'B', {
+      fontSize: '14px',
+      color: '#000000'
+    }).setOrigin(0.5);
+
+    const circleC = this.add.circle(75, 0, r, 0x666666);
+    const labelC = this.add.text(92, 0, 'C', {
+      fontSize: '14px',
+      color: '#000000'
+    }).setOrigin(0.5);
+
+    container.add([circleA, labelA, circleB, labelB, circleC, labelC]);
+
+    const setCircleState = () => {
+      const on = 0x00aa00;
+      const off = 0x666666;
+      const { a, b } = this.nandState;
+      const c = !(a && b) ? 1 : 0;
+
+      circleA.setFillStyle(a ? on : off);
+      circleB.setFillStyle(b ? on : off);
+      circleC.setFillStyle(c ? on : off);
+    };
+
+    setCircleState();
+
+    circleA.on('pointerdown', () => {
+      this.nandState.a = this.nandState.a ? 0 : 1;
+      setCircleState();
+    });
+
+    circleB.on('pointerdown', () => {
+      this.nandState.b = this.nandState.b ? 0 : 1;
+      setCircleState();
+    });
+
+    container.setData('type', 'nand');
+    if (!this.placedComponents) this.placedComponents = [];
+    this.placedComponents.push(container);
+  }
+
+
+
+
+
+
+
 
   addPoints(points) {
     const user = localStorage.getItem('username');

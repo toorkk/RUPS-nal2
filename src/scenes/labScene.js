@@ -182,7 +182,7 @@ export default class LabScene extends Phaser.Scene {
     // desno: Nikola Tesla
     createScientistFrame(
       width - 160,
-      wallCenterY - 40,
+      wallCenterY - 10,
       'sci_tesla',
       'Nikola Tesla',
       'Pionir izmeničnega toka, brezžičnega prenosa energije in mnogih drugih izumov.'
@@ -191,7 +191,7 @@ export default class LabScene extends Phaser.Scene {
     // levo: Michael Faraday (ali kdorkoli želiš)
     createScientistFrame(
       160,
-      wallCenterY - 40,
+      wallCenterY - 10,
       'sci_edison', // poskrbi, da je naložen v preload()
       'Thomas Edison',
       'Izumitelj električne žarnice za praktično uporabo in eden najpomembnejših inovatorjev na področju elektrike, zvoka in filma.'
