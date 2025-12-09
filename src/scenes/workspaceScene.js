@@ -167,6 +167,29 @@ export default class WorkspaceScene extends Phaser.Scene {
         requiredComponents: ['baterija', 'svetilka', 'žica', 'upor'],
         theory: ['Upor omejuje tok v krogu. Večji kot je upor, manjši je tok. Spoznajmo Ohmov zakon: tok (I) = napetost (U) / upornost (R). Svetilka bo svetila manj intenzivno, saj skozi njo teče manjši tok.']
       },
+
+      // {
+      //   prompt: 'Razišči delovanje NOR logičnih vrat. S kliki spreminjaj vhoda A in B ter opazuj izhod C.',
+      //   requiredComponents: ['nor'],
+      //   theory: [
+      //     'NOR (NOT-OR) ima izhod 1 samo takrat, ko sta oba vhoda 0.',
+      //     'V vseh ostalih primerih je izhod 0.',
+      //     'NOR je, podobno kot NAND, univerzalna logična vrata – iz njih lahko zgradimo vsa ostala vrata.'
+      //   ],
+      //   logicOnly: true,     // še vedno logična naloga
+      //   logicNor: true       // dodatna oznaka, da je to NOR, ne NAND
+      // },
+      // {
+      //   prompt: 'Razišči delovanje NAND logičnih vrat. S kliki spreminjaj vhoda A in B ter opazuj izhod C.',
+      //   requiredComponents: ['nand'],
+      //   theory: [
+      //     'NAND (NOT-AND) ima izhod 0 samo takrat, ko sta oba vhoda 1.',
+      //     'V vseh ostalih primerih je izhod 1.',
+      //     'NAND je pomemben, ker iz njega lahko sestavimo vsa druga logična vrata.'
+      //   ],
+      //   logicOnly: true,
+      //   logicNand: true
+      // },
     ];
 
     this.promptText = this.add.text(width / 1.8, height - 30, this.challenges[this.currentChallengeIndex].prompt, {

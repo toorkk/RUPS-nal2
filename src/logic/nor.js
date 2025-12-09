@@ -30,9 +30,23 @@ export function spawnNorForCurrentChallenge(scene) {
   const g = scene.add.graphics();
   g.fillStyle(0xffffff, 1);
   g.lineStyle(3, 0x000000, 1);
-  g.fillRoundedRect(-50, -30, 100, 60, 12);
-  g.strokeRoundedRect(-50, -30, 100, 60, 12);
+//   g.fillRoundedRect(-50, -30, 100, 60, 12);
+//   g.strokeRoundedRect(-50, -30, 100, 60, 12);
   g.strokeCircle(55, 0, 6); // NOT krog
+
+  // dodatno
+  g.lineStyle(4, 0x000000, 1);
+  g.fillStyle(0xffffff, 1);
+
+  g.beginPath();
+  // Increased width + height
+  g.moveTo(-35, -45);   // left top
+  g.lineTo(45, 0);      // sharper, further tip
+  g.lineTo(-35, 45);    // left bottom
+  g.closePath();
+
+  g.fillPath();
+  g.strokePath();
 
   const title = scene.add.text(0, 0, 'NOR', {
     fontSize: '14px',

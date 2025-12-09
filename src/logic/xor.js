@@ -28,10 +28,28 @@ export function spawnXorForCurrentChallenge(scene) {
 
   // ----- RISANJE XOR VRAT -----
   const g = scene.add.graphics();
+//   g.fillStyle(0xffffff, 1);
+//   g.lineStyle(3, 0x000000, 1);
+//   g.fillRoundedRect(-50, -30, 100, 60, 12);
+//   g.strokeRoundedRect(-50, -30, 100, 60, 12);
+
+  // dodatki
+  g.lineStyle(4, 0x000000, 1);
+  g.beginPath();
+  g.arc(-65, 0, 25, -Math.PI / 2, Math.PI / 2, false);
+  g.strokePath();
+  
+  g.lineStyle(4, 0x000000, 1);
   g.fillStyle(0xffffff, 1);
-  g.lineStyle(3, 0x000000, 1);
-  g.fillRoundedRect(-50, -30, 100, 60, 12);
-  g.strokeRoundedRect(-50, -30, 100, 60, 12);
+  
+  g.beginPath();
+  g.moveTo(-35, -45);   // left top
+  g.lineTo(45, 0);      // sharper, further tip
+  g.lineTo(-35, 45);    // left bottom
+  g.closePath();
+  
+  g.fillPath();
+  g.strokePath();
 
   const title = scene.add.text(0, 0, 'XOR', {
     fontSize: '14px',
@@ -64,6 +82,7 @@ export function spawnXorForCurrentChallenge(scene) {
   }).setOrigin(0.5);
 
   container.add([circleA, labelA, circleB, labelB, circleC, labelC]);
+
 
   // ----- LOGIKA + NAPREDEK -----
   const updateProgress = () => {

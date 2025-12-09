@@ -19,7 +19,7 @@ export default class LevelScene extends Phaser.Scene {
         const selectedLevel = currentSelected !== null ? parseInt(currentSelected) : maxUnlockedLevel;
         
         // Total number of levels in the game
-        const totalLevels = 8;
+        const totalLevels = 11;
         
         // Title
         this.add.text(width / 2, 60, 'Izberite nivo', {
