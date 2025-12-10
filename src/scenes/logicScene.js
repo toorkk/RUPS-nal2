@@ -160,6 +160,8 @@ export default class LogicScene extends Phaser.Scene {
     this.add.rectangle(0, 0, panelWidth, height, 0xc0c0c0).setOrigin(0);
     this.add.rectangle(0, 0, panelWidth, height, 0x000000, 0.2).setOrigin(0);
 
+    this.createInputControls();
+
     this.add.text(panelWidth / 2, 60, 'Logična vrata', {
       fontSize: '18px',
       color: '#ffffff',
@@ -189,6 +191,183 @@ export default class LogicScene extends Phaser.Scene {
     // Spawn logic gate based on current challenge
     this.spawnLogicGate();
   }
+
+  createInputControls() {
+    const panelWidth = 150;
+    const { height } = this.cameras.main;
+    
+    // Create input controls container
+    this.inputControls = this.add.container(panelWidth + 20, 100);
+    
+    // Initialize input states
+    this.inputStates = {
+        A: 0,
+        B: 0,
+        Power: 1 // Always 1
+    };
+    
+    // Create A input
+    this.inputA = this.createToggleInput('A', 0, 0);
+    
+    // Create B input
+    this.inputB = this.createToggleInput('B', 0, 80);
+    
+    // Create power input - ALWAYS 1, not toggleable
+    this.powerInput = this.createPowerInput('Power', 0, 160);
+    
+    // Add all to container
+    this.inputControls.add([this.inputA, this.inputB, this.powerInput]);
+    
+    // Update visual states immediately
+    this.updateInputVisuals();
+    
+    // Debug: Add click event logging
+    console.log('Input controls created');
+}
+
+createToggleInput(label, x, y) {
+    const container = this.add.container(x, y);
+    
+    // Background rectangle
+    const bg = this.add.rectangle(0, 0, 60, 60, 0x666666);
+    bg.setStrokeStyle(2, 0x000000);
+    
+    // Label text
+    const labelText = this.add.text(0, -30, label, {
+        fontSize: '18px',
+        color: '#000000',
+        fontWeight: 'bold'
+    }).setOrigin(0.5);
+    
+    // Value display - default 0
+    const valueDisplay = this.add.text(0, 0, '0', {
+        fontSize: '24px',
+        color: '#ff0000',
+        fontWeight: 'bold'
+    }).setOrigin(0.5);
+    
+    // Store references
+    container.bg = bg;
+    container.valueDisplay = valueDisplay;
+    container.label = label;
+    
+    // Make the background interactive
+    bg.setInteractive({ useHandCursor: true });
+    
+    // Pointer events
+    bg.on('pointerover', () => {
+        const currentState = this.inputStates[label];
+        if (currentState === 0) {
+            bg.setFillStyle(0x888888); // Gray on hover when off
+        }
+    });
+    
+    // IMPORTANT: Use arrow function to preserve 'this' context
+    bg.on('pointerdown', () => {
+        console.log(`${label} clicked`);
+        this.toggleInput(label);
+    });
+    
+    container.add([bg, labelText, valueDisplay]);
+    return container;
+}
+
+createPowerInput(label, x, y) {
+    const container = this.add.container(x, y);
+    
+    // Background rectangle - always green
+    const bg = this.add.rectangle(0, 0, 60, 60, 0x006600);
+    bg.setStrokeStyle(2, 0x000000);
+    
+    // Label text
+    const labelText = this.add.text(0, -30, label, {
+        fontSize: '18px',
+        color: '#000000',
+        fontWeight: 'bold'
+    }).setOrigin(0.5);
+    
+    // Value display - always 1 and green
+    const valueDisplay = this.add.text(0, 0, '1', {
+        fontSize: '24px',
+        color: '#00ff00',
+        fontWeight: 'bold'
+    }).setOrigin(0.5);
+    
+    // Store references
+    container.bg = bg;
+    container.valueDisplay = valueDisplay;
+    container.label = label;
+    
+    // Power is NOT interactive - no pointer events
+    
+    container.add([bg, labelText, valueDisplay]);
+    return container;
+}
+
+toggleInput(inputName) {
+    console.log(`Toggling ${inputName} from ${this.inputStates[inputName]} to ${this.inputStates[inputName] === 0 ? 1 : 0}`);
+    
+    // Toggle between 0 and 1 (except for Power which is always 1)
+    if (inputName !== 'Power') {
+        this.inputStates[inputName] = this.inputStates[inputName] === 0 ? 1 : 0;
+    }
+    
+    // Update visuals
+    this.updateInputVisuals();
+    
+    // Update all placed components with new input values
+    this.updateCircuitInputs();
+}
+
+updateInputVisuals() {
+    // Update A input
+    if (this.inputA && this.inputA.valueDisplay) {
+        const aState = this.inputStates.A;
+        this.inputA.valueDisplay.setText(aState.toString());
+        this.inputA.valueDisplay.setColor(aState === 1 ? '#00ff00' : '#ff0000');
+        this.inputA.bg.setFillStyle(aState === 1 ? 0x006600 : 0x666666);
+        console.log(`A updated to: ${aState}`);
+    }
+    
+    // Update B input
+    if (this.inputB && this.inputB.valueDisplay) {
+        const bState = this.inputStates.B;
+        this.inputB.valueDisplay.setText(bState.toString());
+        this.inputB.valueDisplay.setColor(bState === 1 ? '#00ff00' : '#ff0000');
+        this.inputB.bg.setFillStyle(bState === 1 ? 0x006600 : 0x666666);
+        console.log(`B updated to: ${bState}`);
+    }
+    
+    // Update Power input (always 1 and green)
+    if (this.powerInput && this.powerInput.valueDisplay) {
+        // Always show 1 and green for power
+        this.powerInput.valueDisplay.setText('1');
+        this.powerInput.valueDisplay.setColor('#00ff00');
+        this.powerInput.bg.setFillStyle(0x006600); // Always green
+        console.log('Power updated (always 1)');
+    }
+}
+
+updateCircuitInputs() {
+    // Update all placed logic components with current input values
+    this.placedComponents.forEach(component => {
+        const logicComp = component.getData('logicComponent');
+        if (logicComp && logicComp.updateInputs) {
+            logicComp.updateInputs({
+                A: this.inputStates.A,
+                B: this.inputStates.B,
+                power: this.inputStates.Power
+            });
+        }
+        
+        // Also update any visual connections/wires
+        if (this.circuitVisuals) {
+            this.circuitVisuals.updateWireColors(component);
+        }
+    });
+    
+    console.log(`Circuit updated: A=${this.inputStates.A}, B=${this.inputStates.B}, Power=${this.inputStates.Power}`);
+}
 
   createLogicGateButton(x, y, gateType, label, color) {
     const button = this.add.container(x, y);
@@ -524,18 +703,33 @@ createPlaceableGate(gateType, x, y) {
   resetCircuit() {
     // Reset visual effects
     if (this.circuitVisuals) {
-      this.circuitVisuals.resetAllVisuals(this.placedComponents);
+        this.circuitVisuals.resetAllVisuals(this.placedComponents);
     }
     
     // Reset logic components
     this.placedComponents.forEach(comp => {
-      const logicComp = comp.getData('logicComponent');
-      if (logicComp && typeof logicComp.reset === 'function') {
-        logicComp.reset();
-      }
+        const logicComp = comp.getData('logicComponent');
+        if (logicComp && typeof logicComp.reset === 'function') {
+            logicComp.reset();
+        }
     });
+    
+    // RESET INPUT STATES TO DEFAULT (except Power which is always 1)
+    this.inputStates = {
+        A: 0,
+        B: 0,
+        Power: 1  // Always 1
+    };
+    
+    // Update input visuals
+    this.updateInputVisuals();
+    
+    // Update circuit with reset inputs
+    this.updateCircuitInputs();
     
     // Reset status text
     this.checkText.setText('');
-  }
+    
+    console.log('Circuit reset');
+}
 }
