@@ -191,9 +191,6 @@ export default class LogicScene extends Phaser.Scene {
         gate.color
       );
     });
-
-    // Spawn logic gate based on current challenge
-    this.spawnLogicGate();
     
     // Update wire system in the update loop
     this.events.on('update', () => {
@@ -488,30 +485,6 @@ updateGateOutput(container, gateType) {
       'xor': 'XOR (EXCLUSIVE OR)\nIzhod: 1 samo, ko sta vhoda različna\nPovleci na delovno površino'
     };
     return details[gateType] || 'Logična vrata';
-  }
-
-  spawnLogicGate() {
-    // Remove any existing logic gates
-    this.placedComponents.forEach(comp => {
-      // Remove wires connected to this component
-      if (this.wireSystem) {
-        this.wireSystem.removeWiresConnectedTo(comp);
-      }
-      comp.destroy();
-    });
-    this.placedComponents = [];
-    
-    // Spawn the logic gate for current challenge
-    const challenge = this.logicChallenges[this.currentChallengeIndex];
-    if (!challenge) return;
-    
-    if (challenge.logicNand) {
-      spawnNandForCurrentChallenge(this);
-    } else if (challenge.logicXor) {
-      spawnXorForCurrentChallenge(this);
-    } else if (challenge.logicNor) {
-      spawnNorForCurrentChallenge(this);
-    }
   }
 
   createInputControls() {
