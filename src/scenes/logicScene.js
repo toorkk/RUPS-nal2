@@ -124,6 +124,9 @@ export default class LogicScene extends Phaser.Scene {
       padding: { x: 15, y: 8 }
     }).setOrigin(0.5);
 
+    // OUTPUT PIN ON THE RIGHT SIDE
+    this.createOutputPin(width - 80, height / 2);
+
     const buttonWidth = 180;
     const buttonHeight = 45;
     const cornerRadius = 10;
@@ -200,6 +203,87 @@ export default class LogicScene extends Phaser.Scene {
     });
   }
 
+  createOutputPin(x, y) {
+    // Create output pin container
+    this.outputPinContainer = this.add.container(x, y);
+    
+    // Background rectangle
+    const bg = this.add.rectangle(0, 0, 100, 120, 0x2c2c2c, 0.8);
+    bg.setStrokeStyle(2, 0xffffff);
+    
+    // Title
+    const title = this.add.text(0, -45, 'Izhod', {
+      fontSize: '18px',
+      color: '#ffffff',
+      fontWeight: 'bold'
+    }).setOrigin(0.5);
+    
+    // Value display
+    this.outputValueDisplay = this.add.text(0, 0, '0', {
+      fontSize: '32px',
+      color: '#ff0000',
+      fontWeight: 'bold'
+    }).setOrigin(0.5);
+    
+    // Connection circle for wiring
+    const connectionCircle = this.add.circle(0, 30, 15, 0x666666)
+      .setStrokeStyle(2, 0xffffff);
+    const connectionArea = this.add.circle(0, 30, 25, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
+    
+    // Label
+    const label = this.add.text(0, 30, 'Izhod', {
+      fontSize: '14px',
+      color: '#ffffff'
+    }).setOrigin(0.5);
+    
+    // Initialize output state
+    this.outputState = 0;
+    
+    // Setup connection data for wire system
+    connectionArea.setData({
+      type: 'input',
+      name: 'output',
+      parent: 'outputPin',
+      worldX: x,
+      worldY: y + 30,
+      signal: () => this.outputState || 0
+    });
+    
+    // Store reference
+    this.outputConnectionArea = connectionArea;
+    this.outputConnectionCircle = connectionCircle;
+    
+    // Add hover effect
+    connectionArea.on('pointerover', () => {
+      connectionCircle.setStrokeStyle(3, 0xffff00);
+      connectionCircle.setScale(1.2);
+    });
+    
+    connectionArea.on('pointerout', () => {
+      connectionCircle.setStrokeStyle(2, 0xffffff);
+      connectionCircle.setScale(1);
+    });
+    
+    this.outputPinContainer.add([bg, title, this.outputValueDisplay, connectionCircle, connectionArea, label]);
+  }
+  
+  updateOutputDisplay(value) {
+    this.outputState = value;
+    
+    // Update visual display
+    if (this.outputValueDisplay) {
+      this.outputValueDisplay.setText(value.toString());
+      this.outputValueDisplay.setColor(value === 1 ? '#00ff00' : '#ff0000');
+    }
+    
+    // Update connection circle color
+    if (this.outputConnectionCircle) {
+      const color = value ? 0x00ff00 : 0xff0000;
+      this.outputConnectionCircle.setFillStyle(color);
+    }
+  }
+
   createLogicGateButton(x, y, gateType, label, color) {
     const button = this.add.container(x, y);
     
@@ -238,140 +322,140 @@ export default class LogicScene extends Phaser.Scene {
     return button;
   }
 
-  createPlaceableGate(gateType, x, y) {
-  // Create a draggable gate container
-  const container = this.add.container(x, y);
-  
-  // Make it draggable
-  container.setInteractive(new Phaser.Geom.Rectangle(-50, -30, 100, 60), Phaser.Geom.Rectangle.Contains);
-  this.input.setDraggable(container);
-  
-  // Enable dragging and update position during drag
-  this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
-    if (gameObject === container) {
-      container.setPosition(dragX, dragY);
+   createPlaceableGate(gateType, x, y) {
+    // Create a draggable gate container
+    const container = this.add.container(x, y);
+    
+    // Make it draggable
+    container.setInteractive(new Phaser.Geom.Rectangle(-50, -30, 100, 60), Phaser.Geom.Rectangle.Contains);
+    this.input.setDraggable(container);
+    
+    // Enable dragging and update position during drag
+    this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
+      if (gameObject === container) {
+        container.setPosition(dragX, dragY);
+      }
+    });
+    
+    // Snap to grid on drag end
+    container.on('dragend', (pointer) => {
+      const snapX = Math.round(pointer.x / this.gridSize) * this.gridSize;
+      const snapY = Math.round(pointer.y / this.gridSize) * this.gridSize;
+      container.setPosition(snapX, snapY);
+    });
+    
+    // Different visuals based on gate type
+    const graphics = this.add.graphics();
+    
+    // Initialize inputStates here
+    container.inputStates = { A: 0, B: 0 };
+    
+    switch(gateType) {
+      case 'nand':
+        // Draw NAND gate
+        graphics.fillStyle(0xffffff, 1);
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.fillRoundedRect(-50, -30, 100, 60, 12);
+        graphics.strokeRoundedRect(-50, -30, 100, 60, 12);
+        graphics.strokeCircle(55, 0, 6);
+        
+        const nandLabel = this.add.text(0, 0, 'NAND', {
+          fontSize: '14px',
+          color: '#000000',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+        
+        container.add([graphics, nandLabel]);
+        this.addGatePins(container, gateType);
+        break;
+        
+      case 'nor':
+        // Draw NOR gate
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.fillStyle(0xffffff, 1);
+        
+        graphics.beginPath();
+        graphics.moveTo(-35, -45);
+        graphics.lineTo(45, 0);
+        graphics.lineTo(-35, 45);
+        graphics.closePath();
+        graphics.fillPath();
+        graphics.strokePath();
+        graphics.strokeCircle(55, 0, 6);
+        
+        const norLabel = this.add.text(0, 0, 'NOR', {
+          fontSize: '14px',
+          color: '#000000',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+        
+        container.add([graphics, norLabel]);
+        this.addGatePins(container, gateType);
+        break;
+        
+      case 'xor':
+        // Draw XOR gate
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.fillStyle(0xffffff, 1);
+        
+        // XOR curved part
+        graphics.beginPath();
+        graphics.arc(-65, 0, 25, -Math.PI / 2, Math.PI / 2, false);
+        graphics.strokePath();
+        
+        // XOR triangle
+        graphics.beginPath();
+        graphics.moveTo(-35, -45);
+        graphics.lineTo(45, 0);
+        graphics.lineTo(-35, 45);
+        graphics.closePath();
+        graphics.fillPath();
+        graphics.strokePath();
+        
+        const xorLabel = this.add.text(0, 0, 'XOR', {
+          fontSize: '14px',
+          color: '#000000',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+        
+        container.add([graphics, xorLabel]);
+        this.addGatePins(container, gateType);
+        break;
     }
-  });
-  
-  // Snap to grid on drag end
-  container.on('dragend', (pointer) => {
-    const snapX = Math.round(pointer.x / this.gridSize) * this.gridSize;
-    const snapY = Math.round(pointer.y / this.gridSize) * this.gridSize;
-    container.setPosition(snapX, snapY);
-  });
-  
-  // Different visuals based on gate type
-  const graphics = this.add.graphics();
-  
-  // Initialize inputStates here
-  container.inputStates = { A: 0, B: 0 };
-  
-  switch(gateType) {
-    case 'nand':
-      // Draw NAND gate
-      graphics.fillStyle(0xffffff, 1);
-      graphics.lineStyle(3, 0x000000, 1);
-      graphics.fillRoundedRect(-50, -30, 100, 60, 12);
-      graphics.strokeRoundedRect(-50, -30, 100, 60, 12);
-      graphics.strokeCircle(55, 0, 6);
-      
-      const nandLabel = this.add.text(0, 0, 'NAND', {
-        fontSize: '14px',
-        color: '#000000',
-        fontStyle: 'bold'
-      }).setOrigin(0.5);
-      
-      container.add([graphics, nandLabel]);
-      this.addGatePins(container, gateType);
-      break;
-      
-    case 'nor':
-      // Draw NOR gate
-      graphics.lineStyle(3, 0x000000, 1);
-      graphics.fillStyle(0xffffff, 1);
-      
-      graphics.beginPath();
-      graphics.moveTo(-35, -45);
-      graphics.lineTo(45, 0);
-      graphics.lineTo(-35, 45);
-      graphics.closePath();
-      graphics.fillPath();
-      graphics.strokePath();
-      graphics.strokeCircle(55, 0, 6);
-      
-      const norLabel = this.add.text(0, 0, 'NOR', {
-        fontSize: '14px',
-        color: '#000000',
-        fontStyle: 'bold'
-      }).setOrigin(0.5);
-      
-      container.add([graphics, norLabel]);
-      this.addGatePins(container, gateType);
-      break;
-      
-    case 'xor':
-      // Draw XOR gate
-      graphics.lineStyle(3, 0x000000, 1);
-      graphics.fillStyle(0xffffff, 1);
-      
-      // XOR curved part
-      graphics.beginPath();
-      graphics.arc(-65, 0, 25, -Math.PI / 2, Math.PI / 2, false);
-      graphics.strokePath();
-      
-      // XOR triangle
-      graphics.beginPath();
-      graphics.moveTo(-35, -45);
-      graphics.lineTo(45, 0);
-      graphics.lineTo(-35, 45);
-      graphics.closePath();
-      graphics.fillPath();
-      graphics.strokePath();
-      
-      const xorLabel = this.add.text(0, 0, 'XOR', {
-        fontSize: '14px',
-        color: '#000000',
-        fontStyle: 'bold'
-      }).setOrigin(0.5);
-      
-      container.add([graphics, xorLabel]);
-      this.addGatePins(container, gateType);
-      break;
+    
+    // Add pin data for wire connections
+    const pins = this.getGatePins(gateType);
+    container.setData('pins', pins);
+    container.setData('type', gateType);
+    container.setData('output', 0); // Initialize output
+    container.setData('connections', {}); // Initialize connections
+    
+    container.setData('logicComponent', {
+      reset: () => {
+        // Reset logic if needed
+        if (container.inputPins) {
+          container.inputPins.forEach(pin => pin.setFillStyle(0x666666));
+        }
+        if (container.outputPin) {
+          container.outputPin.setFillStyle(0x666666);
+        }
+        container.inputStates = { A: 0, B: 0 };
+        container.setData('output', 0);
+        container.setData('connections', {});
+      },
+      updateInputs: (inputs) => {
+        // Update gate inputs if needed
+        if (container.inputStates) {
+          container.inputStates.A = inputs.A || 0;
+          container.inputStates.B = inputs.B || 0;
+          this.updateGateOutput(container, gateType);
+        }
+      }
+    });
+    
+    this.placedComponents.push(container);
+    return container;
   }
-  
-  // Add pin data for wire connections
-  const pins = this.getGatePins(gateType);
-  container.setData('pins', pins);
-  container.setData('type', gateType);
-  container.setData('output', 0); // Initialize output
-  container.setData('connections', {}); // Initialize connections
-  
-  container.setData('logicComponent', {
-    reset: () => {
-      // Reset logic if needed
-      if (container.inputPins) {
-        container.inputPins.forEach(pin => pin.setFillStyle(0x666666));
-      }
-      if (container.outputPin) {
-        container.outputPin.setFillStyle(0x666666);
-      }
-      container.inputStates = { A: 0, B: 0 };
-      container.setData('output', 0);
-      container.setData('connections', {});
-    },
-    updateInputs: (inputs) => {
-      // Update gate inputs if needed
-      if (container.inputStates) {
-        container.inputStates.A = inputs.A || 0;
-        container.inputStates.B = inputs.B || 0;
-        this.updateGateOutput(container, gateType);
-      }
-    }
-  });
-  
-  this.placedComponents.push(container);
-  return container;
-}
 
   getGatePins(gateType) {
     // Return pin configuration for the gate
@@ -382,37 +466,74 @@ export default class LogicScene extends Phaser.Scene {
     ];
   }
 
- addGatePins(container, gateType) {
-  const pinRadius = 10;
+addGatePins(container, gateType) {
+  const pinRadius = 8; // Smaller radius for connection circles
+  const connectionRadius = 15; // Interactive area for connection
   
   // Ensure inputStates exists
   if (!container.inputStates) {
     container.inputStates = { A: 0, B: 0 };
   }
   
-  // Input pins
-  const inputA = this.add.circle(-65, -12, pinRadius, 0x666666)
+  // Input pins - A
+  const inputACircle = this.add.circle(-65, -12, pinRadius, 0x666666) // Changed from white to gray
+    .setStrokeStyle(2, 0x000000);
+  const inputA = this.add.circle(-65, -12, connectionRadius, 0x000000, 0) // Invisible hit area
     .setInteractive({ useHandCursor: true });
+  
+  // Store connection point data for wire system
+  inputA.setData({
+    type: 'input',
+    name: 'A',
+    parent: container,
+    signal: () => container.inputStates.A || 0
+  });
+  
   const labelA = this.add.text(-80, -12, 'A', {
     fontSize: '14px',
     color: '#000000'
   }).setOrigin(0.5);
   
-  const inputB = this.add.circle(-65, 12, pinRadius, 0x666666)
+  // Input pins - B
+  const inputBCircle = this.add.circle(-65, 12, pinRadius, 0x666666) // Changed from white to gray
+    .setStrokeStyle(2, 0x000000);
+  const inputB = this.add.circle(-65, 12, connectionRadius, 0x000000, 0) // Invisible hit area
     .setInteractive({ useHandCursor: true });
+  
+  inputB.setData({
+    type: 'input',
+    name: 'B',
+    parent: container,
+    signal: () => container.inputStates.B || 0
+  });
+  
   const labelB = this.add.text(-80, 12, 'B', {
     fontSize: '14px',
     color: '#000000'
   }).setOrigin(0.5);
   
-  // Output pin
-  const outputC = this.add.circle(75, 0, pinRadius, 0x666666);
+  // Output pin - C
+  const outputCCircle = this.add.circle(75, 0, pinRadius, 0x666666) // Changed from white to gray
+    .setStrokeStyle(2, 0x000000);
+  const outputC = this.add.circle(75, 0, connectionRadius, 0x000000, 0) // Invisible hit area
+    .setInteractive({ useHandCursor: true });
+  
+  outputC.setData({
+    type: 'output',
+    name: 'C',
+    parent: container,
+    signal: () => container.getData('output') || 0
+  });
+  
   const labelC = this.add.text(92, 0, 'C', {
     fontSize: '14px',
     color: '#000000'
   }).setOrigin(0.5);
   
-  // Store references for logic
+  // Store references for logic and wire system
+  container.inputCircles = { A: inputACircle, B: inputBCircle }; // Store as object for easier access
+  container.outputCircle = outputCCircle;
+  
   container.inputPins = [inputA, inputB];
   container.outputPin = outputC;
   
@@ -423,9 +544,36 @@ export default class LogicScene extends Phaser.Scene {
   container.pins.A = inputA;
   container.pins.B = inputB;
   container.pins.C = outputC;
+  
+  // Store visual circles too
+  container.visualPins = {
+    A: inputACircle,
+    B: inputBCircle,
+    C: outputCCircle
+  };
 
-  container.add([inputA, labelA, inputB, labelB, outputC, labelC]);
+  // Add hover effects for connection points
+  [inputA, inputB, outputC].forEach(pin => {
+    pin.on('pointerover', () => {
+      const circle = pin === inputA ? inputACircle : 
+                    pin === inputB ? inputBCircle : 
+                    outputCCircle;
+      circle.setStrokeStyle(3, 0xffff00);
+      circle.setScale(1.2);
+    });
+    
+    pin.on('pointerout', () => {
+      const circle = pin === inputA ? inputACircle : 
+                    pin === inputB ? inputBCircle : 
+                    outputCCircle;
+      circle.setStrokeStyle(2, 0x000000);
+      circle.setScale(1);
+    });
+  });
+
+  container.add([inputACircle, inputA, labelA, inputBCircle, inputB, labelB, outputCCircle, outputC, labelC]);
 }
+
 
 updateGateOutput(container, gateType) {
   // Check if container has inputStates
@@ -450,14 +598,28 @@ updateGateOutput(container, gateType) {
       output = 0;
   }
   
-  if (container.outputPin) {
-    container.outputPin.setFillStyle(output ? 0x00aa00 : 0x666666);
+  // Update output circle color
+  if (container.outputCircle) {
+    const color = output ? 0x00ff00 : 0xff0000;
+    container.outputCircle.setFillStyle(color);
   }
+  
+  // Also update the visual pin if stored separately
+  if (container.visualPins && container.visualPins.C) {
+    const color = output ? 0x00ff00 : 0xff0000;
+    container.visualPins.C.setFillStyle(color);
+  }
+  
+  // Update pin data signal
+  if (container.outputPin) {
+    container.outputPin.setData('signal', () => output);
+  }
+  
   container.setData('output', output);
   
   // Update wire colors if wire system exists
   if (this.wireSystem) {
-    this.wireSystem.updateWireColors(container);
+    this.wireSystem.updateWiresForComponent(container);
   }
 }
 
@@ -496,52 +658,79 @@ updateGateOutput(container, gateType) {
     this.updateInputVisuals();
   }
 
-  createToggleInput(label, x, y) {
-    const container = this.add.container(x, y);
-    
-    // Background rectangle
-    const bg = this.add.rectangle(0, 0, 60, 60, 0x666666);
-    bg.setStrokeStyle(2, 0x000000);
-    
-    // Label text
-    const labelText = this.add.text(0, -30, label, {
-        fontSize: '18px',
-        color: '#000000',
-        fontWeight: 'bold'
-    }).setOrigin(0.5);
-    
-    // Value display - default 0
-    const valueDisplay = this.add.text(0, 0, '0', {
-        fontSize: '24px',
-        color: '#ff0000',
-        fontWeight: 'bold'
-    }).setOrigin(0.5);
-    
-    // Store references
-    container.bg = bg;
-    container.valueDisplay = valueDisplay;
-    container.label = label;
-    
-    // Make the background interactive
-    bg.setInteractive({ useHandCursor: true });
-    
-    // Pointer events
-    bg.on('pointerover', () => {
-        const currentState = this.inputStates[label];
-        if (currentState === 0) {
-            bg.setFillStyle(0x888888); // Gray on hover when off
-        }
-    });
-    
-    bg.on('pointerdown', (pointer) => {
-        // Prevent triggering wire drawing when clicking on inputs
-        pointer.event.stopPropagation();
-        this.toggleInput(label);
-    });
-    
-    container.add([bg, labelText, valueDisplay]);
-    return container;
-  }
+createToggleInput(label, x, y) {
+  const container = this.add.container(x, y);
+  
+  // Background rectangle
+  const bg = this.add.rectangle(0, 0, 60, 60, 0x666666);
+  bg.setStrokeStyle(2, 0x000000);
+  
+  // Label text
+  const labelText = this.add.text(0, -30, label, {
+    fontSize: '18px',
+    color: '#000000',
+    fontWeight: 'bold'
+  }).setOrigin(0.5);
+  
+  // Value display - default 0
+  const valueDisplay = this.add.text(0, 0, '0', {
+    fontSize: '24px',
+    color: '#ff0000',
+    fontWeight: 'bold'
+  }).setOrigin(0.5);
+  
+  // Connection circle for wiring
+  const connectionCircle = this.add.circle(30, 0, 8, 0xffffff)
+    .setStrokeStyle(2, 0x000000);
+  const connectionArea = this.add.circle(30, 0, 15, 0x000000, 0)
+    .setInteractive({ useHandCursor: true });
+  
+  // Store connection data
+  connectionArea.setData({
+    type: 'output',
+    name: label,
+    parent: 'inputControl',
+    signal: () => this.inputStates[label] || 0
+  });
+  
+  // Add hover effect
+  connectionArea.on('pointerover', () => {
+    connectionCircle.setStrokeStyle(3, 0xffff00);
+    connectionCircle.setScale(1.2);
+  });
+  
+  connectionArea.on('pointerout', () => {
+    connectionCircle.setStrokeStyle(2, 0x000000);
+    connectionCircle.setScale(1);
+  });
+  
+  // Store references
+  container.bg = bg;
+  container.valueDisplay = valueDisplay;
+  container.connectionCircle = connectionCircle;
+  container.connectionArea = connectionArea;
+  container.label = label;
+  
+  // Make the background interactive for toggling
+  bg.setInteractive({ useHandCursor: true });
+  
+  // Pointer events
+  bg.on('pointerover', () => {
+    const currentState = this.inputStates[label];
+    if (currentState === 0) {
+      bg.setFillStyle(0x888888); // Gray on hover when off
+    }
+  });
+  
+  bg.on('pointerdown', (pointer) => {
+    // Prevent triggering wire drawing when clicking on inputs
+    pointer.event.stopPropagation();
+    this.toggleInput(label);
+  });
+  
+  container.add([bg, labelText, valueDisplay, connectionCircle, connectionArea]);
+  return container;
+}
 
   createPowerInput(label, x, y) {
     const container = this.add.container(x, y);
@@ -594,31 +783,33 @@ toggleInput(inputName) {
     }
   }
 
-  updateInputVisuals() {
-    // Update A input
-    if (this.inputA && this.inputA.valueDisplay) {
-      const aState = this.inputStates.A;
-      this.inputA.valueDisplay.setText(aState.toString());
-      this.inputA.valueDisplay.setColor(aState === 1 ? '#00ff00' : '#ff0000');
-      this.inputA.bg.setFillStyle(aState === 1 ? 0x006600 : 0x666666);
-    }
+updateInputVisuals() {
+  // Update A input
+  if (this.inputA && this.inputA.valueDisplay) {
+    const aState = this.inputStates.A;
+    this.inputA.valueDisplay.setText(aState.toString());
+    this.inputA.valueDisplay.setColor(aState === 1 ? '#00ff00' : '#ff0000');
+    this.inputA.bg.setFillStyle(aState === 1 ? 0x006600 : 0x666666);
     
-    // Update B input
-    if (this.inputB && this.inputB.valueDisplay) {
-      const bState = this.inputStates.B;
-      this.inputB.valueDisplay.setText(bState.toString());
-      this.inputB.valueDisplay.setColor(bState === 1 ? '#00ff00' : '#ff0000');
-      this.inputB.bg.setFillStyle(bState === 1 ? 0x006600 : 0x666666);
-    }
-    
-    // Update Power input (always 1 and green)
-    if (this.powerInput && this.powerInput.valueDisplay) {
-      // Always show 1 and green for power
-      this.powerInput.valueDisplay.setText('1');
-      this.powerInput.valueDisplay.setColor('#00ff00');
-      this.powerInput.bg.setFillStyle(0x006600); // Always green
+    // Update connection circle color
+    if (this.inputA.connectionCircle) {
+      this.inputA.connectionCircle.setFillStyle(aState === 1 ? 0x00ff00 : 0xff0000);
     }
   }
+  
+  // Update B input
+  if (this.inputB && this.inputB.valueDisplay) {
+    const bState = this.inputStates.B;
+    this.inputB.valueDisplay.setText(bState.toString());
+    this.inputB.valueDisplay.setColor(bState === 1 ? '#00ff00' : '#ff0000');
+    this.inputB.bg.setFillStyle(bState === 1 ? 0x006600 : 0x666666);
+    
+    // Update connection circle color
+    if (this.inputB.connectionCircle) {
+      this.inputB.connectionCircle.setFillStyle(bState === 1 ? 0x00ff00 : 0xff0000);
+    }
+  }
+}
 
   updateCircuitInputs() {
     // Update all placed logic components with current input values
@@ -637,9 +828,9 @@ toggleInput(inputName) {
       if (gateType) {
         this.updateGateOutput(component, gateType);
       }
-              // Also update any visual connections/wires
+        // Also update any visual connections/wires
     if (this.circuitVisuals) {
-            this.circuitVisuals.updateWireColors(component);
+            this.circuitVisuals.updateWiresForComponent(component);
         }
     });
     
@@ -746,19 +937,19 @@ updateVisualState() {
     }
   }
 
-  resetCircuit() {
+resetCircuit() {
     // Reset visual effects
     if (this.circuitVisuals) {
-      this.circuitVisuals.resetAllVisuals(this.placedComponents);
+        this.circuitVisuals.resetAllVisuals(this.placedComponents);
     }
     
     console.log(this.placedComponents);
  
     this.placedComponents.forEach(comp => {
-      const logicComp = comp.getData('logicComponent');
-      if (logicComp && typeof logicComp.reset === 'function') {
-        logicComp.reset();
-      }
+        const logicComp = comp.getData('logicComponent');
+        if (logicComp && typeof logicComp.reset === 'function') {
+            logicComp.reset();
+        }
         console.log('Destroying component:', comp.getData('type'));
         
         // Remove all listeners first
@@ -774,11 +965,15 @@ updateVisualState() {
     
     // Clear the array
     this.placedComponents = [];
+    
     // RESET INPUT STATES TO DEFAULT
     this.inputStates = {
         A: 0,
         B: 0,
     };
+    
+    // RESET OUTPUT DISPLAY
+    this.updateOutputDisplay(0);
     
     // Update input visuals
     this.updateInputVisuals();
@@ -788,12 +983,12 @@ updateVisualState() {
     
     // Reset wire system
     if (this.wireSystem) {
-      this.wireSystem.reset();
+        this.wireSystem.reset();
     }
     
     // Reset status text
     this.checkText.setText('');
-  }
+}
 
 }
 
