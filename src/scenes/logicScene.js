@@ -2,9 +2,6 @@ import Phaser from 'phaser';
 import { CircuitGraph } from '../logic/circuitGraph';
 import { Node } from '../logic/node';
 import { CircuitVisuals } from '../logic/circuitVisuals';
-import { spawnNandForCurrentChallenge } from '../logic/nand.js';
-import { spawnNorForCurrentChallenge } from '../logic/nor.js';
-import { spawnXorForCurrentChallenge } from '../logic/xor.js';
 import { WireSystem } from '../logic/wireSystem.js';
 
 export default class LogicScene extends Phaser.Scene {
@@ -73,6 +70,18 @@ export default class LogicScene extends Phaser.Scene {
 
     // Logic challenges - only logic gates
     this.logicChallenges = [
+      {
+        prompt: 'Razišči delovanje NOT logičnih vrat. S klikom spreminjaj vhod A in opazuj izhod C.',
+        requiredComponents: ['not'],
+        theory: [
+          'NOT (INVERT) ima izhod nasproten vhodu.',
+          'Če je vhod 0, je izhod 1.',
+          'Če je vhod 1, je izhod 0.',
+          'NOT je najpreprostejša logična vrata in jih uporabljamo za negacijo signala.'
+        ],
+        logicOnly: true,
+        logicNot: true
+      },
       {
         prompt: 'Razišči delovanje NAND logičnih vrat. S kliki spreminjaj vhoda A in B ter opazuj izhod C.',
         requiredComponents: ['nand'],
@@ -174,6 +183,7 @@ export default class LogicScene extends Phaser.Scene {
 
     // Logic gate buttons in panel
     const logicGates = [
+      { type: 'not', label: 'NOT', color: 0xff9900 },
       { type: 'nand', label: 'NAND', color: 0x9933cc },
       { type: 'nor', label: 'NOR', color: 0xcc3366 },
       { type: 'xor', label: 'XOR', color: 0x3399cc }
@@ -267,23 +277,49 @@ export default class LogicScene extends Phaser.Scene {
   container.inputStates = { A: 0, B: 0 };
   
   switch(gateType) {
-    case 'nand':
-      // Draw NAND gate
+    case 'not':
+      // Draw NOT gate (triangle with circle)
       graphics.fillStyle(0xffffff, 1);
       graphics.lineStyle(3, 0x000000, 1);
-      graphics.fillRoundedRect(-50, -30, 100, 60, 12);
-      graphics.strokeRoundedRect(-50, -30, 100, 60, 12);
-      graphics.strokeCircle(55, 0, 6);
       
-      const nandLabel = this.add.text(0, 0, 'NAND', {
+      // Draw triangle for NOT gate
+      graphics.beginPath();
+      graphics.moveTo(-35, -45);
+      graphics.lineTo(35, 0);
+      graphics.lineTo(-35, 45);
+      graphics.closePath();
+      graphics.fillPath();
+      graphics.strokePath();
+      
+      // Draw small circle at output (NOT gate symbol)
+      graphics.strokeCircle(50, 0, 6);
+      
+      const notLabel = this.add.text(0, 0, 'NOT', {
         fontSize: '14px',
         color: '#000000',
         fontStyle: 'bold'
       }).setOrigin(0.5);
       
-      container.add([graphics, nandLabel]);
+      container.add([graphics, notLabel]);
       this.addGatePins(container, gateType);
       break;
+      case 'nand':
+        // Draw NAND gate
+        graphics.fillStyle(0xffffff, 1);
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.fillRoundedRect(-50, -30, 100, 60, 12);
+        graphics.strokeRoundedRect(-50, -30, 100, 60, 12);
+        graphics.strokeCircle(55, 0, 6);
+        
+        const nandLabel = this.add.text(0, 0, 'NAND', {
+          fontSize: '14px',
+          color: '#000000',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+        
+        container.add([graphics, nandLabel]);
+        this.addGatePins(container, gateType);
+        break;
       
     case 'nor':
       // Draw NOR gate
@@ -374,13 +410,20 @@ export default class LogicScene extends Phaser.Scene {
 }
 
   getGatePins(gateType) {
-    // Return pin configuration for the gate
+  // Return pin configuration for the gate
+  if (gateType === 'not') {
+    return [
+      { x: -65, y: 0, type: 'input', name: 'A' },
+      { x: 65, y: 0, type: 'output', name: 'C' }
+    ];
+  } else {
     return [
       { x: -65, y: -12, type: 'input', name: 'A' },
       { x: -65, y: 12, type: 'input', name: 'B' },
       { x: 75, y: 0, type: 'output', name: 'C' }
     ];
   }
+}
 
  addGatePins(container, gateType) {
   const pinRadius = 10;
@@ -390,58 +433,95 @@ export default class LogicScene extends Phaser.Scene {
     container.inputStates = { A: 0, B: 0 };
   }
   
-  // Input pins
-  const inputA = this.add.circle(-65, -12, pinRadius, 0x666666)
-    .setInteractive({ useHandCursor: true });
-  const labelA = this.add.text(-80, -12, 'A', {
-    fontSize: '14px',
-    color: '#000000'
-  }).setOrigin(0.5);
-  
-  const inputB = this.add.circle(-65, 12, pinRadius, 0x666666)
-    .setInteractive({ useHandCursor: true });
-  const labelB = this.add.text(-80, 12, 'B', {
-    fontSize: '14px',
-    color: '#000000'
-  }).setOrigin(0.5);
-  
-  // Output pin
-  const outputC = this.add.circle(75, 0, pinRadius, 0x666666);
-  const labelC = this.add.text(92, 0, 'C', {
-    fontSize: '14px',
-    color: '#000000'
-  }).setOrigin(0.5);
-  
-  // Store references for logic
-  container.inputPins = [inputA, inputB];
-  container.outputPin = outputC;
-  
-  // Store pin references for wire system
-  if (!container.pins) {
-    container.pins = {};
+  // Input pin(s) - NOT gate only has one input
+  if (gateType === 'not') {
+    // Single input pin for NOT gate
+    const inputA = this.add.circle(-65, 0, pinRadius, 0x666666)
+      .setInteractive({ useHandCursor: true });
+    const labelA = this.add.text(-80, 0, 'A', {
+      fontSize: '14px',
+      color: '#000000'
+    }).setOrigin(0.5);
+    
+    // Output pin
+    const outputC = this.add.circle(65, 0, pinRadius, 0x666666);
+    const labelC = this.add.text(82, 0, 'C', {
+      fontSize: '14px',
+      color: '#000000'
+    }).setOrigin(0.5);
+    
+    // Store references for logic
+    container.inputPins = [inputA];
+    container.outputPin = outputC;
+    
+    // Store pin references for wire system
+    if (!container.pins) {
+      container.pins = {};
+    }
+    container.pins.A = inputA;
+    container.pins.C = outputC;
+    
+    // Toggle input on click
+    inputA.on('pointerdown', (pointer) => {
+      pointer.event.stopPropagation();
+      container.inputStates.A = container.inputStates.A ? 0 : 1;
+      inputA.setFillStyle(container.inputStates.A ? 0x00aa00 : 0x666666);
+      this.updateGateOutput(container, gateType);
+    });
+    
+    container.add([inputA, labelA, outputC, labelC]);
+  } else {
+    // For other gates (NAND, NOR, XOR) - two inputs
+    const inputA = this.add.circle(-65, -12, pinRadius, 0x666666)
+      .setInteractive({ useHandCursor: true });
+    const labelA = this.add.text(-80, -12, 'A', {
+      fontSize: '14px',
+      color: '#000000'
+    }).setOrigin(0.5);
+    
+    const inputB = this.add.circle(-65, 12, pinRadius, 0x666666)
+      .setInteractive({ useHandCursor: true });
+    const labelB = this.add.text(-80, 12, 'B', {
+      fontSize: '14px',
+      color: '#000000'
+    }).setOrigin(0.5);
+    
+    // Output pin
+    const outputC = this.add.circle(75, 0, pinRadius, 0x666666);
+    const labelC = this.add.text(92, 0, 'C', {
+      fontSize: '14px',
+      color: '#000000'
+    }).setOrigin(0.5);
+    
+    // Store references for logic
+    container.inputPins = [inputA, inputB];
+    container.outputPin = outputC;
+    
+    // Store pin references for wire system
+    if (!container.pins) {
+      container.pins = {};
+    }
+    container.pins.A = inputA;
+    container.pins.B = inputB;
+    container.pins.C = outputC;
+    
+    // Toggle input on click
+    inputA.on('pointerdown', (pointer) => {
+      pointer.event.stopPropagation();
+      container.inputStates.A = container.inputStates.A ? 0 : 1;
+      inputA.setFillStyle(container.inputStates.A ? 0x00aa00 : 0x666666);
+      this.updateGateOutput(container, gateType);
+    });
+    
+    inputB.on('pointerdown', (pointer) => {
+      pointer.event.stopPropagation();
+      container.inputStates.B = container.inputStates.B ? 0 : 1;
+      inputB.setFillStyle(container.inputStates.B ? 0x00aa00 : 0x666666);
+      this.updateGateOutput(container, gateType);
+    });
+    
+    container.add([inputA, labelA, inputB, labelB, outputC, labelC]);
   }
-  container.pins.A = inputA;
-  container.pins.B = inputB;
-  container.pins.C = outputC;
-  
-  // Toggle input on click
-  inputA.on('pointerdown', (pointer) => {
-    // Prevent triggering wire drawing when clicking on pins
-    pointer.event.stopPropagation();
-    container.inputStates.A = container.inputStates.A ? 0 : 1;
-    inputA.setFillStyle(container.inputStates.A ? 0x00aa00 : 0x666666);
-    this.updateGateOutput(container, gateType);
-  });
-  
-  inputB.on('pointerdown', (pointer) => {
-    // Prevent triggering wire drawing when clicking on pins
-    pointer.event.stopPropagation();
-    container.inputStates.B = container.inputStates.B ? 0 : 1;
-    inputB.setFillStyle(container.inputStates.B ? 0x00aa00 : 0x666666);
-    this.updateGateOutput(container, gateType);
-  });
-  
-  container.add([inputA, labelA, inputB, labelB, outputC, labelC]);
 }
 
 updateGateOutput(container, gateType) {
@@ -463,6 +543,9 @@ updateGateOutput(container, gateType) {
     case 'xor':
       output = (A !== B) ? 1 : 0;
       break;
+    case 'not':
+      output = !A ? 1 : 0; // NOT logic: output is opposite of input
+      break;
     default:
       output = 0;
   }
@@ -480,9 +563,10 @@ updateGateOutput(container, gateType) {
 
   getLogicGateDetails(gateType) {
     const details = {
+      'not': 'NOT (INVERT)\nIzhod: nasproten vhodu\n0 → 1, 1 → 0\nPovleci na delovno površino',
       'nand': 'NAND (NOT-AND)\nIzhod: 0 samo, ko sta oba vhoda 1\nPovleci na delovno površino',
       'nor': 'NOR (NOT-OR)\nIzhod: 1 samo, ko sta oba vhoda 0\nPovleci na delovno površino',
-      'xor': 'XOR (EXCLUSIVE OR)\nIzhod: 1 samo, ko sta vhoda različna\nPovleci na delovno površino'
+      'xor': 'XOR (EXCLUSIVE OR)\nIzhod: 1 samo, ko sta vhoda različna\nPovleci na delovno površino',
     };
     return details[gateType] || 'Logična vrata';
   }

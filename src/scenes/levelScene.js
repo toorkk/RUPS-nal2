@@ -148,7 +148,7 @@ export default class LevelScene extends Phaser.Scene {
                 1
             ).setStrokeStyle(isCurrentlySelected ? 4 : 2, isCurrentlySelected ? 0xFFEB3B : 0xffffff);
             
-            const gateNames = ['NAND', 'XOR', 'NOR'];
+            const gateNames = ['NOT', 'XOR', 'NOR'];
             const labelText = unlocked 
                 ? `${gateNames[level]}${isCurrentlySelected ? ' ✓' : ''}` 
                 : `🔒 ${gateNames[level]}`;
