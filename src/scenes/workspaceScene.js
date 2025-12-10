@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import LabScene from './labScene';
 import { Battery } from '../components/battery';
 import { Bulb } from '../components/bulb';
 import { Wire } from '../components/wire';
@@ -9,11 +8,6 @@ import { Switch } from '../components/switch';
 import { Resistor } from '../components/resistor';
 import { CircuitVisuals } from '../logic/circuitVisuals';
 import { CurrentFlowAnimation } from '../logic/currentFlowAnimation';
-import { spawnNandForCurrentChallenge } from '../logic/nand.js';
-import { spawnNorForCurrentChallenge } from '../logic/nor.js';
-import { spawnXorForCurrentChallenge } from '../logic/xor.js';
-
-
 
 export default class WorkspaceScene extends Phaser.Scene {
   constructor() {
@@ -21,9 +15,8 @@ export default class WorkspaceScene extends Phaser.Scene {
   }
 
   init() {
-    const savedIndex = localStorage.getItem('currentChallengeIndex');
+    const savedIndex = localStorage.getItem('currentCircuitChallengeIndex');
     this.currentChallengeIndex = savedIndex !== null ? parseInt(savedIndex) : 0;
-
   }
 
   preload() {
@@ -45,8 +38,10 @@ export default class WorkspaceScene extends Phaser.Scene {
     this.circuitVisuals = new CircuitVisuals(this);
     this.currentFlowAnim = new CurrentFlowAnimation(this);
 
-    // površje mize
+    // Background
     const desk = this.add.rectangle(0, 0, width, height, 0xe0c9a6).setOrigin(0);
+    
+    // Grid
     const gridGraphics = this.add.graphics();
     gridGraphics.lineStyle(1, 0x8b7355, 0.35);
     const gridSize = 40;
@@ -80,37 +75,17 @@ export default class WorkspaceScene extends Phaser.Scene {
     this.infoWindow.add([infoBox, infoText]);
     this.infoText = infoText;
 
+    // Create circuit info panel
     this.createCircuitInfoPanel();
 
-    // Current flow particles container (for backward compatibility)
+    // Current flow particles container
     this.currentFlowParticles = [];
 
-    this.challenges = [
-      {
-        prompt: 'Razišči delovanje NAND logičnih vrat. S kliki spreminjaj vhoda A in B ter opazuj izhod C.',
-        requiredComponents: ['nand'],
-        theory: [
-          'NAND (NOT-AND) ima izhod 0 samo takrat, ko sta oba vhoda 1.',
-          'V vseh ostalih primerih je izhod 1.',
-          'NAND je pomemben, ker iz njega lahko sestavimo vsa druga logična vrata.'
-        ],
-        logicOnly: true,
-        logicNand: true
-      },
-      {
-        prompt: 'Razišči delovanje XOR logičnih vrat. S kliki spreminjaj vhoda A in B ter opazuj izhod C.',
-        requiredComponents: ['xor'],
-        theory: [
-          'XOR (EXCLUSIVE OR) ima izhod 1 samo takrat, ko sta vhoda A in B RAZLIČNA.',
-          'Če sta oba vhoda 0 ali oba 1, je izhod 0.',
-          'XOR se zelo pogosto uporablja v seštevalnikih in v kriptografiji.'
-        ],
-        logicOnly: true,
-        logicXor: true
-      },
+    // Circuit challenges only (removed logic challenges)
+    this.circuitChallenges = [
       {
         prompt: 'Sestavi preprosti električni krog z baterijo in svetilko.',
-        requiredComponents: ['baterija', 'svetilka', 'žica', 'žica', 'žica', 'žica', 'žica', 'žica'],
+        requiredComponents: ['baterija', 'svetilka', 'žica', 'žica', 'žica', 'žica'],
         theory: ['Osnovni električni krog potrebuje vir, to je v našem primeru baterija. Potrebuje tudi porabnike, to je svetilka. Električni krog je v našem primeru sklenjen, kar je nujno potrebno, da električni tok teče preko prevodnikov oziroma žic.']
       },
       {
@@ -121,48 +96,37 @@ export default class WorkspaceScene extends Phaser.Scene {
       {
         prompt: 'Sestavi preprosti sklenjeni električni krog z baterijo, svetilko in stikalom.',
         requiredComponents: ['baterija', 'svetilka', 'žica', 'stikalo'],
-        theory: ['V sklenjenem krogu je stikalo zaprto, kar pomeni, da lahko električni tok teče neovirano. Torej v tem primeru so vrata zaprta.']
+        theory: ['V sklenjenem krogu je stikalo zaprto, kar pomeni, da lahko električni tok teče neovirano.']
       },
       {
         prompt: 'Sestavi električni krog z baterijo, svetilko in stikalom, ki ga lahko ugašaš in prižigaš.',
         requiredComponents: ['baterija', 'svetilka', 'žica', 'stikalo', 'stikalo'],
-        theory: ['Stikalo nam omogoča nadzor nad pretokom električnega toka. Ko je stikalo zaprto, tok teče in posledično svetilka sveti. Kadar pa je stikalo odprto, tok ne teče in se svetilka ugasne. To lahko primerjamo z vklapljanjem in izklapljanjem električnih naprav v naših domovih.']
+        theory: ['Stikalo nam omogoča nadzor nad pretokom električnega toka. Ko je stikalo zaprto, tok teče in posledično svetilka sveti. Kadar pa je stikalo odprto, tok ne teče in se svetilka ugasne.']
       },
       {
-        prompt: 'Sestavi krog z dvema baterijama in svetilko. ',
+        prompt: 'Sestavi krog z dvema baterijama in svetilko.',
         requiredComponents: ['baterija', 'baterija', 'svetilka', 'žica'],
-        theory: ['Kadar vežemo dve ali več baterij zaporedno, se napetosti seštevajo. Večja je napetost, večji je električni tok. V našem primeru zato svetilka sveti močneje.']
+        theory: ['Kadar vežemo dve ali več baterij zaporedno, se napetosti seštevajo. Večja je napetost, večji je električni tok.']
       },
       {
-        prompt: 'V električni krog zaporedno poveži dve svetilki, ki ju priključiš na baterijo. ',
+        prompt: 'V električni krog zaporedno poveži dve svetilki, ki ju priključiš na baterijo.',
         requiredComponents: ['baterija', 'svetilka', 'svetilka', 'žica'],
-        theory: ['V zaporedni vezavi teče isti električni tok skozi vse svetilke. Napetost baterije se porazdeli. Če imamo primer, da ena svetilka preneha delovati, bo ta prekinila tok skozi drugo svetilko.']
+        theory: ['V zaporedni vezavi teče isti električni tok skozi vse svetilke. Napetost baterije se porazdeli.']
       },
       {
-        prompt: 'V električni krog vzporedno poveži dve svetilki, ki ju priključiš na baterijo. ',
+        prompt: 'V električni krog vzporedno poveži dve svetilki, ki ju priključiš na baterijo.',
         requiredComponents: ['baterija', 'svetilka', 'svetilka', 'žica'],
-        theory: ['V vzporedni vezavi ima vsaka svetilka enako napetost kot baterija. Eletrični tok se porazdeli med svetilkami. Če ena svetilka preneha delovati, bo druga še vedno delovala.']
+        theory: ['V vzporedni vezavi ima vsaka svetilka enako napetost kot baterija. Električni tok se porazdeli med svetilkami.']
       },
       {
-        prompt: 'Sestavi električni krog s svetilko in uporom. ',
+        prompt: 'Sestavi električni krog s svetilko in uporom.',
         requiredComponents: ['baterija', 'svetilka', 'žica', 'upor'],
-        theory: ['Upor omejuje tok v krogu. Večji kot je upor, manjši je tok. Spoznajmo Ohmov zakon: tok (I) = napetost (U) / upornost (R). Svetilka bo svetila manj intenzivno, saj skozi njo teče manjši tok.']
-      },
-
-      {
-        prompt: 'Razišči delovanje NOR logičnih vrat. S kliki spreminjaj vhoda A in B ter opazuj izhod C.',
-        requiredComponents: ['nor'],
-        theory: [
-          'NOR (NOT-OR) ima izhod 1 samo takrat, ko sta oba vhoda 0.',
-          'V vseh ostalih primerih je izhod 0.',
-          'NOR je, podobno kot NAND, univerzalna logična vrata – iz njih lahko zgradimo vsa ostala vrata.'
-        ],
-        logicOnly: true,     // še vedno logična naloga
-        logicNor: true       // dodatna oznaka, da je to NOR, ne NAND
-      },
+        theory: ['Upor omejuje tok v krogu. Večji kot je upor, manjši je tok. Spoznajmo Ohmov zakon: tok (I) = napetost (U) / upornost (R).']
+      }
     ];
 
-    this.promptText = this.add.text(width / 1.8, height - 30, this.challenges[this.currentChallengeIndex].prompt, {
+    this.promptText = this.add.text(width / 1.8, height - 30, 
+      this.circuitChallenges[this.currentChallengeIndex]?.prompt || 'Sestavi električni krog', {
       fontSize: '20px',
       color: '#333',
       fontStyle: 'bold',
@@ -213,7 +177,7 @@ export default class WorkspaceScene extends Phaser.Scene {
     makeButton(width - 140, 175, 'Simulacija', () => this.runSimulation());
     makeButton(width - 140, 225, 'Ponastavi', () => this.resetCircuit());
 
-    // stranska vrstica na levi
+    // Side panel for components
     const panelWidth = 150;
     this.add.rectangle(0, 0, panelWidth, height, 0xc0c0c0).setOrigin(0);
     this.add.rectangle(0, 0, panelWidth, height, 0x000000, 0.2).setOrigin(0);
@@ -224,8 +188,8 @@ export default class WorkspaceScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    const startY = 100;     // first item position
-    const spacing = 90;    // distance between items
+    const startY = 100;
+    const spacing = 90;
 
     const paletteItems = [
       { type: 'baterija', color: 0xffcc00 },
@@ -246,24 +210,7 @@ export default class WorkspaceScene extends Phaser.Scene {
       );
     });
 
-
-    const backButton = this.add.text(12, 10, '↩ Nazaj', {
-      fontFamily: 'Arial',
-      fontSize: '20px',
-      color: '#387affff',
-      padding: { x: 20, y: 10 }
-    })
-      .setOrigin(0, 0)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerover', () => backButton.setStyle({ color: '#0054fdff' }))
-      .on('pointerout', () => backButton.setStyle({ color: '#387affff' }))
-      .on('pointerdown', () => {
-        this.cameras.main.fade(300, 0, 0, 0);
-        this.time.delayedCall(300, () => {
-          this.scene.start('LabScene');
-        });
-      });
-
+    // Header text
     this.add.text(width / 2 + 50, 30, 'Povleci komponente na mizo in zgradi svoj električni krog!', {
       fontSize: '20px',
       color: '#333',
@@ -273,25 +220,23 @@ export default class WorkspaceScene extends Phaser.Scene {
       padding: { x: 15, y: 8 }
     }).setOrigin(0.5);
 
-    // shrani komponente na mizi
+    // Store placed components
     this.placedComponents = [];
     this.gridSize = 40;
-
-    // this.spawnNandForCurrentChallenge()
-
-    this.spawnNandForCurrentChallenge = () => spawnNandForCurrentChallenge(this);
-    this.spawnNandForCurrentChallenge();
-
-    this.spawnNorForCurrentChallenge = () => spawnNorForCurrentChallenge(this);
-    this.spawnNorForCurrentChallenge();
-
-    this.spawnXorForCurrentChallenge = () => spawnXorForCurrentChallenge(this);
-    this.spawnXorForCurrentChallenge();
-
 
     console.log(JSON.parse(localStorage.getItem('users')));
   }
 
+  // Keep all the existing methods from WorkspaceScene (createCircuitInfoPanel, updateCircuitInfoPanel, runSimulation, resetCircuit, createComponent, etc.)
+  // ... [All the existing WorkspaceScene methods remain the same] ...
+  
+  // IMPORTANT: Copy all the remaining methods from your original WorkspaceScene here
+  // including: createCircuitInfoPanel(), updateCircuitInfoPanel(), runSimulation(), resetCircuit(), 
+  // getComponentDetails(), snapToGrid(), getRandomInt(), updateLogicNodePositions(), 
+  // createComponent(), removeComponentFromCircuit(), checkCircuit(), nextChallenge(), 
+  // addPoints(), showTheory(), hideTheory()
+
+  // Only modify the nextChallenge() method to use circuitChallenges instead of challenges:
   createCircuitInfoPanel() {
     const { width, height } = this.cameras.main;
     
@@ -902,7 +847,7 @@ component.on('pointerup', (pointer) => {
   }
 
   checkCircuit() {
-    const currentChallenge = this.challenges[this.currentChallengeIndex];
+    const currentChallenge = this.circuitChallenges[this.currentChallengeIndex];
     const placedTypes = this.placedComponents.map(comp => comp.getData('type'));
     console.log("components", placedTypes);
     this.checkText.setStyle({ color: '#cc0000' });
@@ -925,15 +870,15 @@ component.on('pointerup', (pointer) => {
     this.checkText.setStyle({ color: '#00aa00' });
     this.checkText.setText('Čestitke! Krog je pravilen.');
     this.addPoints(10);
-    const currentLevel = parseInt(localStorage.getItem('currentChallengeIndex') || '0');
-    const highestReached = parseInt(localStorage.getItem('highestChallengeIndex') || '0');
+    const currentLevel = parseInt(localStorage.getItem('currentCircuitChallengeIndex') || '0');
+    const highestReached = parseInt(localStorage.getItem('highestCircuitChallengeIndex') || '0');
 
     // If they completed a level at or above their highest, unlock the next one
     if (currentLevel >= highestReached) {
         const nextLevel = currentLevel + 1;
-        localStorage.setItem('highestChallengeIndex', nextLevel.toString());
+        localStorage.setItem('highestCircuitChallengeIndex', nextLevel.toString());
         // Optionally auto-advance to next level
-        localStorage.setItem('currentChallengeIndex', nextLevel.toString());
+        localStorage.setItem('currentCircuitChallengeIndex', nextLevel.toString());
     }
     
     if (currentChallenge.theory) {
@@ -946,10 +891,9 @@ component.on('pointerup', (pointer) => {
       this.time.delayedCall(2000, () => this.nextChallenge());
     }
   }
-
   nextChallenge() {
     this.currentChallengeIndex++;
-    localStorage.setItem('currentChallengeIndex', this.currentChallengeIndex.toString());
+    localStorage.setItem('currentCircuitChallengeIndex', this.currentChallengeIndex.toString());
     this.checkText.setText('');
 
     // Reset circuit for next challenge
@@ -966,20 +910,15 @@ component.on('pointerup', (pointer) => {
     // Reset graph
     this.graph = new CircuitGraph();
 
-    if (this.currentChallengeIndex < this.challenges.length) {
-      this.promptText.setText(this.challenges[this.currentChallengeIndex].prompt);
-
-      this.spawnNandForCurrentChallenge();
-      this.spawnNorForCurrentChallenge();
-      this.spawnXorForCurrentChallenge();
-    }
-    else {
+    if (this.currentChallengeIndex < this.circuitChallenges.length) {
+      this.promptText.setText(this.circuitChallenges[this.currentChallengeIndex].prompt);
+    } else {
       this.promptText.setText('Vse naloge so uspešno opravljene! Čestitke!');
-      localStorage.removeItem('currentChallengeIndex');
+      localStorage.removeItem('currentCircuitChallengeIndex');
     }
   }
 
-  addPoints(points) {
+    addPoints(points) {
     const user = localStorage.getItem('username');
     const users = JSON.parse(localStorage.getItem('users')) || [];
     const userData = users.find(u => u.username === user);
@@ -1038,22 +977,3 @@ component.on('pointerup', (pointer) => {
     }
   }
 }
-
-const config = {
-  type: Phaser.AUTO,
-  width: window.innerWidth,
-  height: window.innerHeight,
-  parent: 'game-container',
-  backgroundColor: '#f0f0f0',
-  scale: {
-    mode: Phaser.Scale.RESIZE,
-    autoCenter: Phaser.Scale.CENTER_BOTH
-  },
-  scene: [LabScene, WorkspaceScene],
-  physics: {
-    default: 'arcade',
-    arcade: {
-      debug: false
-    }
-  }
-};

@@ -1,0 +1,440 @@
+import Phaser from 'phaser';
+import { CircuitGraph } from '../logic/circuitGraph';
+import { Node } from '../logic/node';
+import { CircuitVisuals } from '../logic/circuitVisuals';
+import { spawnNandForCurrentChallenge } from '../logic/nand.js';
+import { spawnNorForCurrentChallenge } from '../logic/nor.js';
+import { spawnXorForCurrentChallenge } from '../logic/xor.js';
+
+export default class LogicScene extends Phaser.Scene {
+  constructor() {
+    super('LogicScene');
+  }
+
+  init() {
+    const savedIndex = localStorage.getItem('currentLogicChallengeIndex');
+    this.currentChallengeIndex = savedIndex !== null ? parseInt(savedIndex) : 0;
+  }
+
+  preload() {
+    this.graph = new CircuitGraph();
+  }
+
+  create() {
+    const { width, height } = this.cameras.main;
+
+    // Initialize placedComponents BEFORE using it
+    this.placedComponents = [];  // MOVE THIS HERE
+    this.gridSize = 40;          // AND THIS
+
+    // Initialize visual modules
+    this.circuitVisuals = new CircuitVisuals(this);
+
+    // Background
+    const desk = this.add.rectangle(0, 0, width, height, 0xe0c9a6).setOrigin(0);
+    
+    // Grid
+    const gridGraphics = this.add.graphics();
+    gridGraphics.lineStyle(1, 0x8b7355, 0.35);
+    const gridSize = 40;
+    for (let x = 0; x < width; x += gridSize) {
+      gridGraphics.beginPath();
+      gridGraphics.moveTo(x, 0);
+      gridGraphics.lineTo(x, height);
+      gridGraphics.strokePath();
+    }
+    for (let y = 0; y < height; y += gridSize) {
+      gridGraphics.beginPath();
+      gridGraphics.moveTo(0, y);
+      gridGraphics.lineTo(width, y);
+      gridGraphics.strokePath();
+    }
+
+    // Info window for component hover
+    this.infoWindow = this.add.container(0, 0);
+    this.infoWindow.setDepth(1000);
+    this.infoWindow.setVisible(false);
+    
+    const infoBox = this.add.rectangle(0, 0, 200, 80, 0x2c2c2c, 0.95);
+    infoBox.setStrokeStyle(2, 0xffffff);
+    const infoText = this.add.text(0, 0, '', {
+        fontSize: '14px',
+        color: '#ffffff',
+        align: 'left',
+        wordWrap: { width: 180 }
+    }).setOrigin(0.5);
+    
+    this.infoWindow.add([infoBox, infoText]);
+    this.infoText = infoText;
+
+    // Logic challenges - only logic gates
+    this.logicChallenges = [
+      {
+        prompt: 'Razišči delovanje NAND logičnih vrat. S kliki spreminjaj vhoda A in B ter opazuj izhod C.',
+        requiredComponents: ['nand'],
+        theory: [
+          'NAND (NOT-AND) ima izhod 0 samo takrat, ko sta oba vhoda 1.',
+          'V vseh ostalih primerih je izhod 1.',
+          'NAND je pomemben, ker iz njega lahko sestavimo vsa druga logična vrata.'
+        ],
+        logicOnly: true,
+        logicNand: true
+      },
+      {
+        prompt: 'Razišči delovanje XOR logičnih vrat. S kliki spreminjaj vhoda A in B ter opazuj izhod C.',
+        requiredComponents: ['xor'],
+        theory: [
+          'XOR (EXCLUSIVE OR) ima izhod 1 samo takrat, ko sta vhoda A in B RAZLIČNA.',
+          'Če sta oba vhoda 0 ali oba 1, je izhod 0.',
+          'XOR se zelo pogosto uporablja v seštevalnikih in v kriptografiji.'
+        ],
+        logicOnly: true,
+        logicXor: true
+      },
+      {
+        prompt: 'Razišči delovanje NOR logičnih vrat. S kliki spreminjaj vhoda A in B ter opazuj izhod C.',
+        requiredComponents: ['nor'],
+        theory: [
+          'NOR (NOT-OR) ima izhod 1 samo takrat, ko sta oba vhoda 0.',
+          'V vseh ostalih primerih je izhod 0.',
+          'NOR je, podobno kot NAND, univerzalna logična vrata – iz njih lahko zgradimo vsa ostala vrata.'
+        ],
+        logicOnly: true,
+        logicNor: true
+      }
+    ];
+
+    this.promptText = this.add.text(width / 1.8, height - 30, 
+      this.logicChallenges[this.currentChallengeIndex]?.prompt || 'Izberi logično vrata za preizkus', {
+      fontSize: '20px',
+      color: '#333',
+      fontStyle: 'bold',
+      backgroundColor: '#ffffff88',
+      padding: { x: 15, y: 8 }
+    }).setOrigin(0.5);
+
+    this.checkText = this.add.text(width / 2, height - 70, '', {
+      fontSize: '18px',
+      color: '#cc0000',
+      fontStyle: 'bold',
+      padding: { x: 15, y: 8 }
+    }).setOrigin(0.5);
+
+    const buttonWidth = 180;
+    const buttonHeight = 45;
+    const cornerRadius = 10;
+
+    const makeButton = (x, y, label, onClick) => {
+      const bg = this.add.graphics();
+      bg.fillStyle(0x3399ff, 1);
+      bg.fillRoundedRect(x - buttonWidth / 2, y - buttonHeight / 2, buttonWidth, buttonHeight, cornerRadius);
+
+      const text = this.add.text(x, y, label, {
+        fontFamily: 'Arial',
+        fontSize: '20px',
+        color: '#ffffff'
+      }).setOrigin(0.5)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerover', () => {
+          bg.clear();
+          bg.fillStyle(0x0f5cad, 1);
+          bg.fillRoundedRect(x - buttonWidth / 2, y - buttonHeight / 2, buttonWidth, buttonHeight, cornerRadius);
+        })
+        .on('pointerout', () => {
+          bg.clear();
+          bg.fillStyle(0x3399ff, 1);
+          bg.fillRoundedRect(x - buttonWidth / 2, y - buttonHeight / 2, buttonWidth, buttonHeight, cornerRadius);
+        })
+        .on('pointerdown', onClick);
+
+      return { bg, text };
+    };
+
+    // Back button to level selection
+    makeButton(width - 140, 25, 'Izbira levela', () => this.scene.start('LevelScene'));
+    makeButton(width - 140, 125, 'Preveri', () => this.checkCircuit());
+    makeButton(width - 140, 175, 'Ponastavi', () => this.resetCircuit());
+
+    // Side panel for logic gates
+    const panelWidth = 150;
+    this.add.rectangle(0, 0, panelWidth, height, 0xc0c0c0).setOrigin(0);
+    this.add.rectangle(0, 0, panelWidth, height, 0x000000, 0.2).setOrigin(0);
+
+    this.add.text(panelWidth / 2, 60, 'Logična vrata', {
+      fontSize: '18px',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    // Logic gate buttons in panel
+    const logicGates = [
+      { type: 'nand', label: 'NAND', color: 0x9933cc },
+      { type: 'nor', label: 'NOR', color: 0xcc3366 },
+      { type: 'xor', label: 'XOR', color: 0x3399cc }
+    ];
+
+    const startY = 100;
+    const spacing = 90;
+
+    logicGates.forEach((gate, index) => {
+      this.createLogicGateButton(
+        panelWidth / 2,
+        startY + index * spacing,
+        gate.type,
+        gate.label,
+        gate.color
+      );
+    });
+
+    // Spawn logic gate based on current challenge
+    this.spawnLogicGate();
+
+    // REMOVE THESE LINES - they're already initialized at the top
+    // this.placedComponents = [];
+    // this.gridSize = 40;
+  }
+
+  createLogicGateButton(x, y, gateType, label, color) {
+    const button = this.add.container(x, y);
+    
+    // Button background
+    const bg = this.add.circle(0, 0, 40, color);
+    
+    // Label
+    const text = this.add.text(0, 0, label, {
+      fontSize: '16px',
+      color: '#ffffff',
+      fontWeight: 'bold'
+    }).setOrigin(0.5);
+    
+    button.add([bg, text]);
+    button.setInteractive(new Phaser.Geom.Circle(0, 0, 40), Phaser.Geom.Circle.Contains);
+    
+    button.on('pointerover', () => {
+      bg.setScale(1.1);
+      const details = this.getLogicGateDetails(gateType);
+      this.infoText.setText(details);
+      this.infoWindow.x = x + 120;
+      this.infoWindow.y = y;
+      this.infoWindow.setVisible(true);
+    });
+    
+    button.on('pointerout', () => {
+      bg.setScale(1);
+      this.infoWindow.setVisible(false);
+    });
+    
+    button.on('pointerdown', () => {
+      // Set this as the current logic challenge
+      let challengeIndex = 0;
+      switch(gateType) {
+        case 'nand':
+          challengeIndex = 0;
+          break;
+        case 'xor':
+          challengeIndex = 1;
+          break;
+        case 'nor':
+          challengeIndex = 2;
+          break;
+      }
+      
+      localStorage.setItem('currentLogicChallengeIndex', challengeIndex.toString());
+      this.currentChallengeIndex = challengeIndex;
+      
+      // Reset and spawn the selected gate
+      this.resetCircuit();
+      this.spawnLogicGate();
+      this.promptText.setText(this.logicChallenges[challengeIndex].prompt);
+    });
+    
+    return button;
+  }
+
+  getLogicGateDetails(gateType) {
+    const details = {
+      'nand': 'NAND (NOT-AND)\nIzhod: 0 samo, ko sta oba vhoda 1',
+      'nor': 'NOR (NOT-OR)\nIzhod: 1 samo, ko sta oba vhoda 0',
+      'xor': 'XOR (EXCLUSIVE OR)\nIzhod: 1 samo, ko sta vhoda različna'
+    };
+    return details[gateType] || 'Logična vrata';
+  }
+
+  spawnLogicGate() {
+    // Remove any existing logic gates
+    this.placedComponents.forEach(comp => {
+      comp.destroy();
+    });
+    this.placedComponents = [];
+    
+    // Spawn the logic gate for current challenge
+    const challenge = this.logicChallenges[this.currentChallengeIndex];
+    if (!challenge) return;
+    
+    if (challenge.logicNand) {
+      spawnNandForCurrentChallenge(this);
+    } else if (challenge.logicXor) {
+      spawnXorForCurrentChallenge(this);
+    } else if (challenge.logicNor) {
+      spawnNorForCurrentChallenge(this);
+    }
+  }
+
+checkCircuit() {
+  const currentChallenge = this.logicChallenges[this.currentChallengeIndex];
+  if (!currentChallenge) {
+    this.checkText.setText('Najprej izberi logična vrata');
+    return;
+  }
+
+  // --- Logic for points and success message (Unchanged) ---
+  this.checkText.setStyle({ color: '#00aa00' });
+  this.checkText.setText('Pravilno! Preuči delovanje vrat.');
+  this.addPoints(5);
+  // --------------------------------------------------------
+
+  // 1. Get the current highest *completed* level index
+    const highest = parseInt(localStorage.getItem('highestLogicChallengeIndex')) || 0;
+    const newHighest = this.currentChallengeIndex + 1;
+
+    if (newHighest > highest) {
+        localStorage.setItem('highestLogicChallengeIndex', newHighest.toString());
+    }
+
+
+  // Check if the current level is a NEW highest completed level
+  if (this.currentChallengeIndex >= highestIndex) {
+    
+    // Save the current index as the new highest completed index.
+    localStorage.setItem('highestLogicChallengeIndex', this.currentChallengeIndex.toString());
+    
+    // Check if there is a next level to unlock/inform about
+    const nextLevelIndex = this.currentChallengeIndex + 1;
+    if (nextLevelIndex < this.logicChallenges.length) {
+        const gateNames = ['NAND', 'XOR', 'NOR'];
+        const nextGate = gateNames[nextLevelIndex];
+        
+        // Update the success message to confirm the next level unlock
+        this.checkText.setText(`Pravilno! Odklepljeni so ${nextGate} vrata!`);
+    } else {
+        // All levels completed
+        this.checkText.setText('Pravilno! Vsi logični izzivi končani!');
+    }
+  }
+  
+  // --- Logic for showing theory (Unchanged) ---
+  if (currentChallenge.theory) {
+    this.showTheory(currentChallenge.theory);
+  }
+}
+
+  addPoints(points) {
+    const user = localStorage.getItem('username');
+    const users = JSON.parse(localStorage.getItem('users')) || [];
+    const userData = users.find(u => u.username === user);
+    if (userData) {
+      userData.score = (userData.score || 0) + points;
+    }
+    localStorage.setItem('users', JSON.stringify(users));
+  }
+
+showTheory(theoryText) {
+    const { width, height } = this.cameras.main;
+
+    this.theoryBack = this.add.rectangle(width / 2, height /2, width + 100, 150, 0x000000, 0.8)
+        .setOrigin(0.5)
+        .setDepth(10);
+
+    // UPDATE: Add next level button if there are more levels
+    const isLastLevel = this.currentChallengeIndex >= this.logicChallenges.length - 1;
+    
+    this.theoryText = this.add.text(width / 2, height / 2, theoryText, {
+        fontSize: '16px',
+        color: '#ffffff',
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: width - 150 }
+    })
+        .setOrigin(0.5)
+        .setDepth(11);
+
+    // Close button
+    this.continueButton = this.add.text(width / 2, height / 2 + 70, 'Zapri', {
+        fontSize: '18px',
+        color: '#0066ff',
+        backgroundColor: '#ffffff',
+        padding: { x: 20, y: 10 }
+    })
+        .setOrigin(0.5)
+        .setDepth(11)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerover', () => this.continueButton.setStyle({ color: '#0044cc' }))
+        .on('pointerout', () => this.continueButton.setStyle({ color: '#0066ff' }))
+        .on('pointerdown', () => {
+        this.hideTheory();
+        });
+    
+    // UPDATE: Add next level button if not the last level
+    if (!isLastLevel) {
+        this.nextLevelButton = this.add.text(width / 2 + 150, height / 2 + 70, 'Naprej na naslednja vrata', {
+        fontSize: '18px',
+        color: '#00cc00',
+        backgroundColor: '#ffffff',
+        padding: { x: 20, y: 10 }
+        })
+        .setOrigin(0.5)
+        .setDepth(11)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerover', () => this.nextLevelButton.setStyle({ color: '#009900' }))
+        .on('pointerout', () => this.nextLevelButton.setStyle({ color: '#00cc00' }))
+        .on('pointerdown', () => {
+            // Go to next level
+            const nextLevelIndex = this.currentChallengeIndex + 1;
+            localStorage.setItem('currentLogicChallengeIndex', nextLevelIndex.toString());
+            this.currentChallengeIndex = nextLevelIndex;
+            this.spawnLogicGate();
+            this.promptText.setText(this.logicChallenges[nextLevelIndex].prompt);
+            this.checkText.setText('');
+            this.hideTheory();
+        });
+    }
+    }
+
+    hideTheory() {
+    if (this.theoryBack) {
+        this.theoryBack.destroy();
+        this.theoryBack = null;
+    }
+    if (this.theoryText) {
+        this.theoryText.destroy();
+        this.theoryText = null;
+    }
+    if (this.continueButton) {
+        this.continueButton.destroy();
+        this.continueButton = null;
+    }
+    // UPDATE: Also destroy next level button if it exists
+    if (this.nextLevelButton) {
+        this.nextLevelButton.destroy();
+        this.nextLevelButton = null;
+    }
+    }
+
+  resetCircuit() {
+    // Reset visual effects
+    if (this.circuitVisuals) {
+      this.circuitVisuals.resetAllVisuals(this.placedComponents);
+    }
+    
+    // Reset logic components
+    this.placedComponents.forEach(comp => {
+      const logicComp = comp.getData('logicComponent');
+      if (logicComp && typeof logicComp.reset === 'function') {
+        logicComp.reset();
+      }
+    });
+    
+    // Reset status text
+    this.checkText.setText('');
+  }
+}

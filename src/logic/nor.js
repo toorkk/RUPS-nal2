@@ -1,5 +1,5 @@
 export function spawnNorForCurrentChallenge(scene) {
-  const current = scene.challenges[scene.currentChallengeIndex];
+  const current = scene.logicChallenges[scene.currentChallengeIndex];
   if (!current || current.logicOnly !== true || current.logicNor !== true) return;
 
   const { width, height } = scene.cameras.main;
@@ -93,15 +93,15 @@ export function spawnNorForCurrentChallenge(scene) {
     scene.checkText.setStyle({ color: '#00aa00' });
     scene.checkText.setText('Odlično! Preizkusil si vse 4 kombinacije A in B za NOR.');
 
-    const currentChallenge = scene.challenges[scene.currentChallengeIndex];
+    const currentChallenge = scene.logicChallenges[scene.currentChallengeIndex];
 
-    const currentLevel = parseInt(localStorage.getItem('currentChallengeIndex') || '0', 10);
-    const highestReached = parseInt(localStorage.getItem('highestChallengeIndex') || '0', 10);
+    const currentLevel = parseInt(localStorage.getItem('currentLogicChallengeIndex') || '0', 10);
+    const highestReached = parseInt(localStorage.getItem('highestLogicChallengeIndex') || '0', 10);
 
     if (currentLevel >= highestReached) {
       const nextLevel = currentLevel + 1;
-      localStorage.setItem('highestChallengeIndex', nextLevel.toString());
-      localStorage.setItem('currentChallengeIndex', nextLevel.toString());
+      localStorage.setItem('highestLogicChallengeIndex', nextLevel.toString());
+      localStorage.setItem('currentLogicChallengeIndex', nextLevel.toString());
     }
 
     if (currentChallenge.theory) {

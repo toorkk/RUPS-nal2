@@ -11,6 +11,7 @@ import LoginScene from './scenes/loginScene';
 import ScoreboardScene from './scenes/scoreboardScene';
 import WorkspaceScene from './scenes/workspaceScene';
 import LevelScene from './scenes/levelScene';
+import LogicScene from './scenes/logicScene';
 
 const config = {
   type: Phaser.AUTO,            
@@ -28,7 +29,8 @@ const config = {
     TestScene,
     LoginScene,
     ScoreboardScene,
-    LevelScene
+    LevelScene,
+    LogicScene
   ],
   physics: {
     default: 'arcade',           
