@@ -886,14 +886,24 @@ updateVisualState() {
         this.circuitVisuals.resetAllVisuals(this.placedComponents);
     }
     
-    // Reset logic components
+    console.log(this.placedComponents);
+ 
     this.placedComponents.forEach(comp => {
-        const logicComp = comp.getData('logicComponent');
-        if (logicComp && typeof logicComp.reset === 'function') {
-            logicComp.reset();
+        console.log('Destroying component:', comp.getData('type'));
+        
+        // Remove all listeners first
+        if (comp.inputPins) {
+            comp.inputPins.forEach(pin => {
+                pin.removeAllListeners();
+            });
         }
+        
+        // Remove the container from the scene
+        comp.destroy();
     });
     
+    // Clear the array
+    this.placedComponents = [];
     // RESET INPUT STATES TO DEFAULT (except Power which is always 1)
     this.inputStates = {
         A: 0,
