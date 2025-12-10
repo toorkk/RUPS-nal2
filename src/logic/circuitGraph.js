@@ -55,7 +55,7 @@ class CircuitGraph {
         if (!comp) return false;
         if (comp.type === 'switch') return comp.is_on;
         if (comp.type === 'bulb' && comp.burnedOut) return false;
-        const conductiveTypes = ['wire', 'bulb', 'resistor', 'battery', 'switch'];
+        const conductiveTypes = ['wire', 'bulb', 'resistor', 'battery', 'switch', 'voltmeter', 'ammeter'];
         return conductiveTypes.includes(comp.type);
     }
 
@@ -84,6 +84,8 @@ class CircuitGraph {
             case 'resistor': return comp.ohm || 220;
             case 'switch': return comp.resistance || 0.5;
             case 'battery': return comp.internalResistance || 0;
+            case 'voltmeter': return comp.resistance || 1000000; // Visok upor
+            case 'ammeter': return comp.resistance || 0.01; // Nizek upor
             default: return 10;
         }
     }
@@ -148,11 +150,54 @@ class CircuitGraph {
 
     // MODIFICIRANA VOZLIŠČNA ANALIZA (MNA)
     solveCircuit() {
-        // 1. Zgradi seznam edinstvenih vozlišč
-        const nodePositions = new Map(); // ključ vozlišča -> indeks
-        const nodeList = []; // indeks -> vozlišče
+        // 0. FIRST: Find all components that are actually connected to batteries
+        const connectedComponents = new Set();
+        const visitedNodes = new Set();
 
-        for (const comp of this.components) {
+        // Start DFS from battery nodes
+        const batteries = this.components.filter(c => c.type === 'battery');
+        const stack = [];
+
+        for (const battery of batteries) {
+            stack.push(battery.start);
+            stack.push(battery.end);
+            connectedComponents.add(battery);
+        }
+
+        // DFS to find all connected components
+        while (stack.length > 0) {
+            const node = stack.pop();
+            const nodeKey = this.nodeKey(node);
+
+            if (visitedNodes.has(nodeKey)) continue;
+            visitedNodes.add(nodeKey);
+
+            const connectedComps = this.getConnections(node);
+            for (const comp of connectedComps) {
+                if (this.componentConducts(comp)) {
+                    connectedComponents.add(comp);
+                    const otherNode = this.sameNode(comp.start, node) ? comp.end : comp.start;
+                    const otherKey = this.nodeKey(otherNode);
+                    if (!visitedNodes.has(otherKey)) {
+                        stack.push(otherNode);
+                    }
+                }
+            }
+        }
+
+        // Only use connected components for MNA
+        const activeComponents = Array.from(connectedComponents);
+
+        if (activeComponents.length === 0) {
+            console.log("No connected active components found");
+            return null;
+        }
+
+        // 1. Zgradi seznam edinstvenih vozlišč IZ AKTIVNIH KOMPONENT
+        const nodePositions = new Map();
+        const nodeList = [];
+
+        for (const comp of activeComponents) { // Changed from this.components
             if (!this.componentConducts(comp) && comp.type !== 'battery') continue;
 
             const startKey = this.nodeKey(comp.start);
@@ -160,23 +205,36 @@ class CircuitGraph {
 
             if (!nodePositions.has(startKey)) {
                 nodePositions.set(startKey, nodeList.length);
-                nodeList.push({ x: comp.start.x, y: comp.start.y, key: startKey, node: comp.start });
+                nodeList.push({
+                    x: comp.start.x,
+                    y: comp.start.y,
+                    key: startKey,
+                    node: comp.start
+                });
             }
             if (!nodePositions.has(endKey)) {
                 nodePositions.set(endKey, nodeList.length);
-                nodeList.push({ x: comp.end.x, y: comp.end.y, key: endKey, node: comp.end });
+                nodeList.push({
+                    x: comp.end.x,
+                    y: comp.end.y,
+                    key: endKey,
+                    node: comp.end
+                });
             }
         }
 
-        const N = nodeList.length; // Skupno število vozlišč
-        if (N < 1) return null;
+        const N = nodeList.length;
+        if (N < 1) {
+            console.log("No nodes found in active components");
+            return null;
+        }
 
         // Izberi prvo vozlišče kot referenčno (ozemljitveno = 0 V)
         const groundIndex = 0;
 
         // 2. Zberi napetostne vire (baterije)
         const voltageSources = [];
-        for (const comp of this.components) {
+        for (const comp of activeComponents) { // Changed from this.components
             if (comp.type === 'battery') {
                 // Pozitivni pol je comp.end, negativni pol je comp.start
                 voltageSources.push({
@@ -189,10 +247,16 @@ class CircuitGraph {
         }
         const M = voltageSources.length; // Število napetostnih virov
 
+        if (M === 0) {
+            console.log("No batteries found in connected circuit");
+            return null;
+        }
+
         const nv = Math.max(0, N - 1); // Število neznanih napetosti vozlišč (brez referenčnega)
         const unknowns = nv + M; // Skupno število neznank [Vozlišča] + [Tokovi virov]
 
         if (unknowns === 0) {
+            console.log("No unknowns to solve");
             return null;
         }
 
@@ -215,7 +279,7 @@ class CircuitGraph {
         }
 
         // 3. Vstavljanje prevodnosti za uporovne komponente
-        for (const comp of this.components) {
+        for (const comp of activeComponents) { // Changed from this.components
             if (!this.componentConducts(comp) && comp.type !== 'battery') continue;
 
             const R = this.getComponentResistance(comp);
@@ -225,6 +289,8 @@ class CircuitGraph {
             const endKey = this.nodeKey(comp.end);
             const iNode = nodePositions.get(startKey);
             const jNode = nodePositions.get(endKey);
+
+            if (iNode === undefined || jNode === undefined) continue;
 
             const g = 1 / R; // Prevodnost
 
@@ -245,6 +311,8 @@ class CircuitGraph {
             const vs = voltageSources[k];
             const posIndex = nodePositions.get(vs.posKey);
             const negIndex = nodePositions.get(vs.negKey);
+
+            if (posIndex === undefined || negIndex === undefined) continue;
 
             const col = nv + k; // Stolpec za tok I_k
 
@@ -298,7 +366,7 @@ class CircuitGraph {
         const componentCurrents = new Map();
         const componentVoltages = new Map();
 
-        for (const comp of this.components) {
+        for (const comp of activeComponents) { // Changed from this.components
             const startKey = this.nodeKey(comp.start);
             const endKey = this.nodeKey(comp.end);
             const iNode = nodePositions.get(startKey);
@@ -346,7 +414,8 @@ class CircuitGraph {
             nodeList,
             nodePositions,
             voltageSourceCurrents: vsCurrents,
-            voltageSources
+            voltageSources,
+            activeComponents: activeComponents
         };
     }
 
@@ -386,6 +455,7 @@ class CircuitGraph {
                 closed: false
             };
         }
+
         // Preveri, ali obstaja zaprta zanka
         const hasPath = this.findClosedLoopPath(primaryBattery.start, primaryBattery.end);
         if (!hasPath) {
@@ -408,7 +478,7 @@ class CircuitGraph {
             };
         }
 
-        // Reši vezje z MNA
+        // Reši vezje z MNA - nova verzija bo ignorirala nepovezane komponente
         console.log("Vezje zaprto! Reševanje z MNA...");
         const solution = this.solveCircuit();
 
@@ -425,22 +495,25 @@ class CircuitGraph {
         console.log('\n=== MNA Rešitev ===');
         console.log('Napetosti vozlišč:');
         for (const [key, voltage] of solution.nodeVoltages) {
-            console.log(`  ${key}: ${voltage.toFixed(6)} V`);
+            console.log(`  ${key}: ${voltage.toFixed(6)} V`);
         }
 
         console.log('\nTokovi komponent:');
         let totalCurrent = 0;
         const componentDetails = [];
 
-        for (const comp of this.components) {
+        // Use only active components from solution
+        const activeComponents = solution.activeComponents || this.components;
+
+        for (const comp of activeComponents) {
             const current = solution.componentCurrents.get(comp.id) || 0;
             const voltageInfo = solution.componentVoltages.get(comp.id);
 
             if (comp.type === 'battery') {
-                totalCurrent += Math.abs(current); // Seštejemo magnitude tokov baterij
+                totalCurrent += Math.abs(current);
             }
 
-            console.log(`  ${comp.type} (${comp.id}): ${(current * 1000).toFixed(4)} mA, ${voltageInfo ? voltageInfo.diff.toFixed(6) : 0} V padec`);
+            console.log(`  ${comp.type} (${comp.id}): ${(current * 1000).toFixed(4)} mA, ${voltageInfo ? voltageInfo.diff.toFixed(6) : 0} V padec`);
 
             // Posodobi stanje komponente (npr. svetlost žarnice)
             if (comp.type === 'bulb' && typeof comp.update === 'function') {
@@ -465,7 +538,7 @@ class CircuitGraph {
             message: "Vezje rešeno z MNA",
             closed: true,
             current: totalCurrent,
-            totalVoltage: this.components.filter(c => c.type === 'battery').length === 1 ? (this.components.find(c => c.type === 'battery').voltage || 0) : undefined,
+            totalVoltage: activeComponents.filter(c => c.type === 'battery').length === 1 ? (activeComponents.find(c => c.type === 'battery').voltage || 0) : undefined,
             nodeVoltages: solution.nodeVoltages,
             componentCurrents: solution.componentCurrents,
             componentVoltages: solution.componentVoltages,

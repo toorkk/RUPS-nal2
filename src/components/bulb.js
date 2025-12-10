@@ -34,7 +34,7 @@ class Bulb extends Component {
         this.burnedOut = true;
         this.is_on = false;
         this.brightness = 0;
-        console.log(`💥 Bulb ${this.id} burned out!`);
+        console.log(`Bulb ${this.id} burned out!`);
     }
 
     reset() {
@@ -46,14 +46,14 @@ class Bulb extends Component {
     turnOn() {
         if (!this.burnedOut) {
             this.is_on = true;
-            console.log(`💡 Bulb ${this.id} is now ON.`);
+            console.log(`Bulb ${this.id} is now ON.`);
         }
     }
 
     turnOff() {
         this.is_on = false;
         this.brightness = 0;
-        console.log(`💡 Bulb ${this.id} is now OFF.`);
+        console.log(`Bulb ${this.id} is now OFF.`);
     }
 }
 

@@ -8,6 +8,8 @@ import { Switch } from '../components/switch';
 import { Resistor } from '../components/resistor';
 import { CircuitVisuals } from '../logic/circuitVisuals';
 import { CurrentFlowAnimation } from '../logic/currentFlowAnimation';
+import { Voltmeter } from '../components/volmeter.js';
+import { Ammeter } from '../components/ammeter.js';
 
 export default class WorkspaceScene extends Phaser.Scene {
   constructor() {
@@ -170,8 +172,6 @@ export default class WorkspaceScene extends Phaser.Scene {
     makeButton(width - 140, 25, 'Izbira levela', () => this.scene.start('LevelScene'));
     makeButton(width - 140, 75, 'Lestvica', () => this.scene.start('ScoreboardScene', { cameFromMenu: false }));
     makeButton(width - 140, 125, 'Preveri krog', () => this.checkCircuit());
-    makeButton(width - 140, 175, 'Simulacija', () => this.runSimulation());
-    makeButton(width - 140, 225, 'Ponastavi', () => this.resetCircuit());
 
     const panelWidth = 150;
     this.add.rectangle(0, 0, panelWidth, height, 0xc0c0c0).setOrigin(0);
@@ -346,8 +346,6 @@ export default class WorkspaceScene extends Phaser.Scene {
           this.checkText.setStyle({ color: '#cc0000' });
           if (result.status === -1) {
             this.checkText.setText('Manjka ti baterija');
-          } else if (result.status === -2) {
-            this.checkText.setText('Stikalo je izklopljeno');
           } else if (result.status === 0) {
             this.checkText.setText('Električni tok ni sklenjen');
           }
@@ -581,20 +579,36 @@ export default class WorkspaceScene extends Phaser.Scene {
 
       case 'ampermeter':
         id = "ammeter_" + this.getRandomInt(1000, 9999);
+        comp = new Ammeter(
+          id,
+          new Node(id + '_start', -40, 0),
+          new Node(id + '_end', 40, 0)
+        );
+        comp.type = 'ammeter';
+        comp.localStart = { x: -40, y: 0 };
+        comp.localEnd = { x: 40, y: 0 };
         componentImage = this.add.image(0, 0, 'ampermeter')
           .setOrigin(0.5)
           .setDisplaySize(100, 100);
         component.add(componentImage);
-        component.setData('logicComponent', null);
+        component.setData('logicComponent', comp);
         break;
 
       case 'voltmeter':
         id = "voltmeter_" + this.getRandomInt(1000, 9999);
+        comp = new Voltmeter(
+          id,
+          new Node(id + '_start', -40, 0),
+          new Node(id + '_end', 40, 0)
+        );
+        comp.type = 'voltmeter';
+        comp.localStart = { x: -40, y: 0 };
+        comp.localEnd = { x: 40, y: 0 };
         componentImage = this.add.image(0, 0, 'voltmeter')
           .setOrigin(0.5)
           .setDisplaySize(100, 100);
         component.add(componentImage);
-        component.setData('logicComponent', null);
+        component.setData('logicComponent', comp);
         break;
     }
 
@@ -635,7 +649,6 @@ export default class WorkspaceScene extends Phaser.Scene {
     component.setData('color', color);
     component.setData('isInPanel', true);
     component.setData('rotation', 0);
-    component.setData('clickCount', 0);
     if (comp) component.setData('logicComponent', comp);
     component.setData('isDragging', false);
     component.setData('componentId', id);
@@ -708,7 +721,6 @@ export default class WorkspaceScene extends Phaser.Scene {
       }
     });
 
-    // FIX: Simplified click handler for rotation
     component.on('pointerdown', () => {
       if (!component.getData('isInPanel')) {
         component.setData('clickTime', this.time.now);
@@ -719,27 +731,24 @@ export default class WorkspaceScene extends Phaser.Scene {
       if (!component.getData('isInPanel')) {
         const clickTime = component.getData('clickTime');
         const clickDuration = this.time.now - clickTime;
-        
-        // Only process if click was short (not a drag)
+
         if (clickDuration < 200) {
           const logicComp = component.getData('logicComponent');
-          
-          // Handle switch toggle
+
           if (logicComp && logicComp.type === 'switch') {
             logicComp.toggle();
-            
-            const img = component.getByName('switchImage') 
+
+            const img = component.getByName('switchImage')
               || component.list.find(child => child.type === 'Image');
-            
+
             if (img) {
               img.setTexture(logicComp.is_on ? 'stikalo-on' : 'stikalo-off');
             }
-            
+
             this.scheduleSimulation();
             return;
           }
-          
-          // Handle rotation - simple and direct
+
           component.angle = (component.angle + 90) % 360;
           this.updateLogicNodePositions(component);
           this.scheduleSimulation();
