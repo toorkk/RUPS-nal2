@@ -12,6 +12,9 @@ import { CurrentFlowAnimation } from '../logic/currentFlowAnimation';
 export default class WorkspaceScene extends Phaser.Scene {
   constructor() {
     super('WorkspaceScene');
+    this.simulationThrottle = null;
+    this.isSimulationRunning = false;
+    this.simulationDelay = 500;
   }
 
   init() {
@@ -34,14 +37,11 @@ export default class WorkspaceScene extends Phaser.Scene {
   create() {
     const { width, height } = this.cameras.main;
 
-    // Initialize visual modules
     this.circuitVisuals = new CircuitVisuals(this);
     this.currentFlowAnim = new CurrentFlowAnimation(this);
 
-    // Background
     const desk = this.add.rectangle(0, 0, width, height, 0xe0c9a6).setOrigin(0);
-    
-    // Grid
+
     const gridGraphics = this.add.graphics();
     gridGraphics.lineStyle(1, 0x8b7355, 0.35);
     const gridSize = 40;
@@ -58,30 +58,26 @@ export default class WorkspaceScene extends Phaser.Scene {
       gridGraphics.strokePath();
     }
 
-    // Info window for component hover
     this.infoWindow = this.add.container(0, 0);
     this.infoWindow.setDepth(1000);
     this.infoWindow.setVisible(false);
-    
+
     const infoBox = this.add.rectangle(0, 0, 200, 80, 0x2c2c2c, 0.95);
     infoBox.setStrokeStyle(2, 0xffffff);
     const infoText = this.add.text(0, 0, '', {
-        fontSize: '14px',
-        color: '#ffffff',
-        align: 'left',
-        wordWrap: { width: 180 }
+      fontSize: '14px',
+      color: '#ffffff',
+      align: 'left',
+      wordWrap: { width: 180 }
     }).setOrigin(0.5);
-    
+
     this.infoWindow.add([infoBox, infoText]);
     this.infoText = infoText;
 
-    // Create circuit info panel
     this.createCircuitInfoPanel();
 
-    // Current flow particles container
     this.currentFlowParticles = [];
 
-    // Circuit challenges only (removed logic challenges)
     this.circuitChallenges = [
       {
         prompt: 'Sestavi preprosti električni krog z baterijo in svetilko.',
@@ -94,7 +90,7 @@ export default class WorkspaceScene extends Phaser.Scene {
         theory: ['V nesklenjenem krogu je stikalo odprto, kar pomeni, da je električni tok prekinjen. Svetilka posledično zato ne sveti.']
       },
       {
-        prompt: 'Sestavi preprosti sklenjeni električni krog z baterijo, svetilko in stikalom.',
+        prompt: 'Sestavi preprosti sklenjeni električni krog z baterijo, svetilka in stikalom.',
         requiredComponents: ['baterija', 'svetilka', 'žica', 'stikalo'],
         theory: ['V sklenjenem krogu je stikalo zaprto, kar pomeni, da lahko električni tok teče neovirano.']
       },
@@ -116,7 +112,7 @@ export default class WorkspaceScene extends Phaser.Scene {
       {
         prompt: 'V električni krog vzporedno poveži dve svetilki, ki ju priključiš na baterijo.',
         requiredComponents: ['baterija', 'svetilka', 'svetilka', 'žica'],
-        theory: ['V vzporedni vezavi ima vsaka svetilka enako napetost kot baterija. Električni tok se porazdeli med svetilkami.']
+        theory: ['V vzporedni vezavi ima vsaka svetilka enako napetost kot baterija. Električni tok se porazdeli med svetilkama.']
       },
       {
         prompt: 'Sestavi električni krog s svetilko in uporom.',
@@ -125,7 +121,7 @@ export default class WorkspaceScene extends Phaser.Scene {
       }
     ];
 
-    this.promptText = this.add.text(width / 1.8, height - 30, 
+    this.promptText = this.add.text(width / 1.8, height - 30,
       this.circuitChallenges[this.currentChallengeIndex]?.prompt || 'Sestavi električni krog', {
       fontSize: '20px',
       color: '#333',
@@ -177,7 +173,6 @@ export default class WorkspaceScene extends Phaser.Scene {
     makeButton(width - 140, 175, 'Simulacija', () => this.runSimulation());
     makeButton(width - 140, 225, 'Ponastavi', () => this.resetCircuit());
 
-    // Side panel for components
     const panelWidth = 150;
     this.add.rectangle(0, 0, panelWidth, height, 0xc0c0c0).setOrigin(0);
     this.add.rectangle(0, 0, panelWidth, height, 0x000000, 0.2).setOrigin(0);
@@ -210,7 +205,6 @@ export default class WorkspaceScene extends Phaser.Scene {
       );
     });
 
-    // Header text
     this.add.text(width / 2 + 50, 30, 'Povleci komponente na mizo in zgradi svoj električni krog!', {
       fontSize: '20px',
       color: '#333',
@@ -220,71 +214,64 @@ export default class WorkspaceScene extends Phaser.Scene {
       padding: { x: 15, y: 8 }
     }).setOrigin(0.5);
 
-    // Store placed components
     this.placedComponents = [];
     this.gridSize = 40;
-
-    console.log(JSON.parse(localStorage.getItem('users')));
   }
 
-  // Keep all the existing methods from WorkspaceScene (createCircuitInfoPanel, updateCircuitInfoPanel, runSimulation, resetCircuit, createComponent, etc.)
-  // ... [All the existing WorkspaceScene methods remain the same] ...
-  
-  // IMPORTANT: Copy all the remaining methods from your original WorkspaceScene here
-  // including: createCircuitInfoPanel(), updateCircuitInfoPanel(), runSimulation(), resetCircuit(), 
-  // getComponentDetails(), snapToGrid(), getRandomInt(), updateLogicNodePositions(), 
-  // createComponent(), removeComponentFromCircuit(), checkCircuit(), nextChallenge(), 
-  // addPoints(), showTheory(), hideTheory()
+  scheduleSimulation() {
+    if (this.simulationThrottle) {
+      clearTimeout(this.simulationThrottle);
+    }
 
-  // Only modify the nextChallenge() method to use circuitChallenges instead of challenges:
+    this.simulationThrottle = setTimeout(() => {
+      this.runSimulation();
+      this.simulationThrottle = null;
+    }, this.simulationDelay);
+  }
+
   createCircuitInfoPanel() {
     const { width, height } = this.cameras.main;
-    
-    // Panel container
+
     this.circuitInfoPanel = this.add.container(width - 140, 350);
     this.circuitInfoPanel.setDepth(100);
-    
-    // Background
+
     const panelBg = this.add.rectangle(0, 0, 200, 180, 0x2c2c2c, 0.95);
     panelBg.setStrokeStyle(2, 0xffffff);
-    
-    // Title
+
     const title = this.add.text(0, -72, 'Meritve', {
       fontSize: '16px',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5);
-    
-    // Separator line
+
     const separator = this.add.rectangle(0, -55, 180, 1, 0xffffff);
-    
-    // Info text lines
+
     this.voltageText = this.add.text(-85, -40, 'Napetost: -- V', {
       fontSize: '14px',
       color: '#ffcc00'
     });
-    
+
     this.resistanceText = this.add.text(-85, -15, 'Upornost: -- Ω', {
       fontSize: '14px',
       color: '#ff9900'
     });
-    
+
     this.currentText = this.add.text(-85, 10, 'Tok: -- A', {
       fontSize: '14px',
       color: '#00ccff'
     });
-    
+
     this.powerText = this.add.text(-85, 35, 'Moč: -- W', {
       fontSize: '14px',
       color: '#ff6699'
     });
-    
+
     this.statusText = this.add.text(0, 65, '', {
       fontSize: '12px',
       color: '#aaaaaa',
       align: 'center'
     }).setOrigin(0.5);
-    
+
     this.circuitInfoPanel.add([
       panelBg,
       title,
@@ -312,10 +299,9 @@ export default class WorkspaceScene extends Phaser.Scene {
       const voltage = result.totalVoltage || 0;
       const current = result.current || 0;
       const power = voltage * current;
-      
-      // Calculate equivalent resistance from V and I (R = V/I)
+
       const resistance = current > 0 ? voltage / current : Infinity;
-      
+
       this.voltageText.setText(`Napetost: ${voltage.toFixed(2)} V`);
       this.resistanceText.setText(`Upornost: ${resistance < 10000 ? resistance.toFixed(2) : '∞'} Ω`);
       this.currentText.setText(`Tok: ${current.toFixed(3)} A`);
@@ -333,49 +319,66 @@ export default class WorkspaceScene extends Phaser.Scene {
   }
 
   runSimulation() {
-    // Run the simulation
-    const result = this.graph.simulate();
-    
-    // Update info panel
-    this.updateCircuitInfoPanel(result);
-    
-    // Update visual feedback using CircuitVisuals module
-    this.circuitVisuals.updateComponentVisuals(result, this.placedComponents, this.graph);
-    
-    // Update status text
-    if (result.status === 1) {
-      this.checkText.setStyle({ color: '#00aa00' });
-      this.checkText.setText('Električni tok teče!');
-      this.sim = true;
-      
-      // Start current flow animation using CurrentFlowAnimation module
-      this.currentFlowAnim.start(result, this.placedComponents, this.graph);
-    } else {
-      this.checkText.setStyle({ color: '#cc0000' });
-      if (result.status === -1) {
-        this.checkText.setText('Manjka ti baterija');
-      } else if (result.status === -2) {
-        this.checkText.setText('Stikalo je izklopljeno');
-      } else if (result.status === 0) {
-        this.checkText.setText('Električni tok ni sklenjen');
-      }
-      this.sim = false;
-      
-      // Stop current flow animation
-      this.currentFlowAnim.stop();
+    if (this.isSimulationRunning) {
+      return null;
     }
-    
-    return result;
+
+    this.isSimulationRunning = true;
+
+    try {
+      this.currentFlowAnim.stop();
+      this.circuitVisuals.resetAllVisuals(this.placedComponents);
+
+      const result = this.graph.simulate();
+
+      this.updateCircuitInfoPanel(result);
+
+      if (result) {
+        this.circuitVisuals.updateComponentVisuals(result, this.placedComponents, this.graph);
+
+        if (result.status === 1) {
+          this.checkText.setStyle({ color: '#00aa00' });
+          this.checkText.setText('Električni tok teče!');
+          this.sim = true;
+
+          this.currentFlowAnim.start(result, this.placedComponents, this.graph);
+        } else {
+          this.checkText.setStyle({ color: '#cc0000' });
+          if (result.status === -1) {
+            this.checkText.setText('Manjka ti baterija');
+          } else if (result.status === -2) {
+            this.checkText.setText('Stikalo je izklopljeno');
+          } else if (result.status === 0) {
+            this.checkText.setText('Električni tok ni sklenjen');
+          }
+          this.sim = false;
+        }
+      } else {
+        this.checkText.setStyle({ color: '#cc0000' });
+        this.checkText.setText('Krog ni pravilno sestavljen');
+        this.sim = false;
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Simulation error:', error);
+      this.checkText.setStyle({ color: '#cc0000' });
+      this.checkText.setText('Napaka pri simulaciji');
+      return null;
+    } finally {
+      this.isSimulationRunning = false;
+    }
   }
 
   resetCircuit() {
-    // Stop animations using module
+    if (this.simulationThrottle) {
+      clearTimeout(this.simulationThrottle);
+      this.simulationThrottle = null;
+    }
+
     this.currentFlowAnim.stop();
-    
-    // Reset all visual effects using module
     this.circuitVisuals.resetAllVisuals(this.placedComponents);
-    
-    // Reset logic component state
+
     for (const placedComp of this.placedComponents) {
       const logicComp = placedComp.getData('logicComponent');
       if (logicComp) {
@@ -384,50 +387,23 @@ export default class WorkspaceScene extends Phaser.Scene {
         }
       }
     }
-    
-    // Reset info panel
+
     this.updateCircuitInfoPanel(null);
-    
-    // Reset status text
     this.checkText.setText('');
     this.sim = undefined;
   }
 
   getComponentDetails(type) {
     const details = {
-        'baterija': 'Napetost: 9 V\nVir električne energije',
-        'upor': 'Upornost: 220 Ω\nOmejuje tok',
-        'svetilka': 'Upornost: 100 Ω\nPretvarja v svetlobo',
-        'stikalo': 'Stanje: ZAPRTO\nDovoljuje tok\nStanje: ODPRTO\nPrepreči tok',
-        //'stikalo-off': 'Stanje: ODPRTO\nPrepreči tok',
-        'žica': 'Upornost: 1 Ω\nPovezuje komponente',
-        'ampermeter': 'Meri električni tok\nEnota: amperi (A)',
-        'voltmeter': 'Meri napetost\nEnota: volti (V)'
+      'baterija': 'Napetost: 9 V\nVir električne energije',
+      'upor': 'Upornost: 220 Ω\nOmejuje tok',
+      'svetilka': 'Upornost: 100 Ω\nPretvarja v svetlobo',
+      'stikalo': 'Stanje: ZAPRTO\nDovoljuje tok\nStanje: ODPRTO\nPrepreči tok',
+      'žica': 'Upornost: 1 Ω\nPovezuje komponente',
+      'ampermeter': 'Meri električni tok\nEnota: amperi (A)',
+      'voltmeter': 'Meri napetost\nEnota: volti (V)'
     };
     return details[type] || 'Komponenta';
-  }
-
-  createGrid() {
-    const { width, height } = this.cameras.main;
-    const gridGraphics = this.add.graphics();
-    gridGraphics.lineStyle(2, 0x8b7355, 0.4);
-
-    const gridSize = 40;
-    const startX = 200;
-
-    for (let x = startX; x < width; x += gridSize) {
-      gridGraphics.beginPath();
-      gridGraphics.moveTo(x, 0);
-      gridGraphics.lineTo(x, height);
-      gridGraphics.strokePath();
-    }
-
-    for (let y = 0; y < height; y += gridSize) {
-      gridGraphics.beginPath();
-      gridGraphics.moveTo(startX, y);
-      gridGraphics.lineTo(width, y);
-      gridGraphics.strokePath();
-    }
   }
 
   snapToGrid(x, y) {
@@ -456,7 +432,7 @@ export default class WorkspaceScene extends Phaser.Scene {
     const localStart = comp.localStart || { x: -halfW, y: 0 };
     const localEnd = comp.localEnd || { x: halfW, y: 0 };
 
-    const theta = (typeof component.rotation === 'number' && component.rotation) ? component.rotation : Phaser.Math.DegToRad(component.angle || 0);
+    const theta = Phaser.Math.DegToRad(component.angle || 0);
 
     const cos = Math.cos(theta);
     const sin = Math.sin(theta);
@@ -492,13 +468,11 @@ export default class WorkspaceScene extends Phaser.Scene {
     if (startDot && comp.start) { startDot.x = comp.start.x; startDot.y = comp.start.y; }
     if (endDot && comp.end) { endDot.x = comp.end.x; endDot.y = comp.end.y; }
 
-    // Update value text position if exists
     const valueText = component.getData('valueText');
     if (valueText) {
       valueText.setPosition(component.x, component.y - 50);
     }
 
-    // Update glow effect position if exists
     const glow = component.getData('glowEffect');
     if (glow) {
       glow.setPosition(component.x, component.y);
@@ -519,7 +493,7 @@ export default class WorkspaceScene extends Phaser.Scene {
           id,
           new Node(id + '_start', -40, 0),
           new Node(id + '_end', 40, 0),
-          9 // 9V - standardna baterija
+          9
         );
         comp.type = 'battery';
         comp.localStart = { x: -40, y: 0 };
@@ -537,8 +511,8 @@ export default class WorkspaceScene extends Phaser.Scene {
           id,
           new Node(id + '_start', -40, 0),
           new Node(id + '_end', 40, 0),
-          220 // 220Ω - pogost upor v šolskih kompletih
-        )
+          220
+        );
         comp.type = 'resistor';
         comp.localStart = { x: -40, y: 0 };
         comp.localEnd = { x: 40, y: 0 };
@@ -546,7 +520,7 @@ export default class WorkspaceScene extends Phaser.Scene {
           .setOrigin(0.5)
           .setDisplaySize(100, 100);
         component.add(componentImage);
-        component.setData('logicComponent', comp)
+        component.setData('logicComponent', comp);
         break;
 
       case 'svetilka':
@@ -555,7 +529,7 @@ export default class WorkspaceScene extends Phaser.Scene {
           id,
           new Node(id + '_start', -40, 0),
           new Node(id + '_end', 40, 0),
-          100  // 100Ω - tipična majhna žarnica
+          100
         );
         comp.type = 'bulb';
         comp.localStart = { x: -40, y: 0 };
@@ -573,16 +547,16 @@ export default class WorkspaceScene extends Phaser.Scene {
           id,
           new Node(id + "_start", -40, 0),
           new Node(id + "_end", 40, 0),
-          false // start OFF
+          false
         );
         comp.type = 'switch';
         comp.localStart = { x: -40, y: 0 };
         comp.localEnd = { x: 40, y: 0 };
 
-        componentImage = this.add.image(0, 0, 'stikalo-off') // default OFF sprite
+        componentImage = this.add.image(0, 0, 'stikalo-off')
           .setOrigin(0.5)
           .setDisplaySize(100, 100)
-          .setName('switchImage'); // name so we can find it later
+          .setName('switchImage');
 
         component.add(componentImage);
         component.setData('logicComponent', comp);
@@ -611,7 +585,7 @@ export default class WorkspaceScene extends Phaser.Scene {
           .setOrigin(0.5)
           .setDisplaySize(100, 100);
         component.add(componentImage);
-        component.setData('logicComponent', null)
+        component.setData('logicComponent', null);
         break;
 
       case 'voltmeter':
@@ -620,7 +594,7 @@ export default class WorkspaceScene extends Phaser.Scene {
           .setOrigin(0.5)
           .setDisplaySize(100, 100);
         component.add(componentImage);
-        component.setData('logicComponent', null)
+        component.setData('logicComponent', null);
         break;
     }
 
@@ -628,14 +602,14 @@ export default class WorkspaceScene extends Phaser.Scene {
       if (component.getData('isInPanel')) {
         const details = this.getComponentDetails(type);
         this.infoText.setText(details);
-        
+
         this.infoWindow.x = x + 120;
         this.infoWindow.y = y;
         this.infoWindow.setVisible(true);
       }
       component.setScale(1.1);
     });
-    
+
     component.on('pointerout', () => {
       if (component.getData('isInPanel')) {
         this.infoWindow.setVisible(false);
@@ -643,7 +617,6 @@ export default class WorkspaceScene extends Phaser.Scene {
       component.setScale(1);
     });
 
-    // Label - samo vidno v levem panelu
     const label = this.add.text(0, 45, type, {
       fontSize: '11px',
       color: '#fff',
@@ -662,13 +635,16 @@ export default class WorkspaceScene extends Phaser.Scene {
     component.setData('color', color);
     component.setData('isInPanel', true);
     component.setData('rotation', 0);
+    component.setData('clickCount', 0);
     if (comp) component.setData('logicComponent', comp);
     component.setData('isDragging', false);
+    component.setData('componentId', id);
 
     this.input.setDraggable(component);
 
     component.on('dragstart', () => {
       component.setData('isDragging', true);
+      this.checkText.setText('');
     });
 
     component.on('drag', (pointer, dragX, dragY) => {
@@ -677,18 +653,18 @@ export default class WorkspaceScene extends Phaser.Scene {
     });
 
     component.on('dragend', () => {
+      component.setData('isDragging', false);
       const isInPanel = component.x < 200;
 
       if (isInPanel && !component.getData('isInPanel')) {
-        // Remove from circuit when dragged back to panel
         this.removeComponentFromCircuit(component);
         component.destroy();
+        this.scheduleSimulation();
       } else if (!isInPanel && component.getData('isInPanel')) {
         const snapped = this.snapToGrid(component.x, component.y);
         component.x = snapped.x;
         component.y = snapped.y;
 
-        // Hide label when placed on workspace
         const label = component.getData('label');
         if (label) {
           label.setVisible(false);
@@ -696,7 +672,6 @@ export default class WorkspaceScene extends Phaser.Scene {
 
         const comp = component.getData('logicComponent');
         if (comp) {
-          console.log("Component: " + comp)
           this.graph.addComponent(comp);
 
           if (comp.start) this.graph.addNode(comp.start);
@@ -704,7 +679,6 @@ export default class WorkspaceScene extends Phaser.Scene {
         }
 
         this.updateLogicNodePositions(component);
-
         component.setData('isRotated', false);
         component.setData('isInPanel', false);
 
@@ -716,6 +690,7 @@ export default class WorkspaceScene extends Phaser.Scene {
         );
 
         this.placedComponents.push(component);
+        this.scheduleSimulation();
 
       } else if (!component.getData('isInPanel')) {
         const snapped = this.snapToGrid(component.x, component.y);
@@ -723,110 +698,66 @@ export default class WorkspaceScene extends Phaser.Scene {
         component.y = snapped.y;
 
         this.updateLogicNodePositions(component);
+        this.scheduleSimulation();
 
       } else {
         component.x = component.getData('originalX');
         component.y = component.getData('originalY');
-
-        this.updateLogicNodePositions(component);
+        component.angle = 0;
+        component.setData('rotation', 0);
       }
-
-      this.time.delayedCall(500, () => {
-        component.setData('isDragging', false);
-      });
     });
 
-    // component.on('pointerdown', () => {
-    //   if (!component.getData('isInPanel')) {
-    //     const currentRotation = component.getData('rotation');
-    //     const newRotation = (currentRotation + 90) % 360;
-    //     component.setData('rotation', newRotation);
-    //     component.setData('isRotated', !component.getData('isRotated'));
-
-    //     this.tweens.add({
-    //       targets: component,
-    //       angle: newRotation,
-    //       duration: 150,
-    //       ease: 'Cubic.easeOut',
-    //       onComplete: () => {
-    //         this.updateLogicNodePositions(component);
-    //       }
-    //     });
-    //   }
-    // });
-
-component.on('pointerdown', (pointer) => {
-  if (!component.getData('isInPanel')) {
-    // Store the time when pointer was pressed
-    component.setData('pointerDownTime', this.time.now);
-  }
-});
-
-component.on('pointerup', (pointer) => {
-  if (!component.getData('isInPanel')) {
-    const pointerDownTime = component.getData('pointerDownTime');
-    const pressDuration = this.time.now - pointerDownTime;
-    
-    // Only rotate if press was less than 100ms 
-    if (pressDuration < 100) {
-      const logicComp = component.getData('logicComponent');
-      
-      // If this is a switch, toggle it
-      if (logicComp && logicComp.type === 'switch') {
-        logicComp.toggle();
-        
-        // Find the image and swap its texture
-        const img = component.getByName('switchImage') 
-          || component.list.find(child => child.type === 'Image');
-        
-        if (img) {
-          img.setTexture(logicComp.is_on ? 'stikalo-on' : 'stikalo-off');
-        }
-        
-        // (optional) re-run simulation here if you want instant feedback:
-        // this.runSimulation();
-        return; // do not rotate when clicking a switch
+    // FIX: Simplified click handler for rotation
+    component.on('pointerdown', () => {
+      if (!component.getData('isInPanel')) {
+        component.setData('clickTime', this.time.now);
       }
-      
-      // Default behavior: rotate component
-      const currentRotation = component.angle;
-      const newRotation = currentRotation + 90;
-      component.setData('rotation', newRotation);
-      component.setData('isRotated', !component.getData('isRotated'));
-      
-      this.tweens.add({
-        targets: component,
-        angle: newRotation,
-        duration: 150,
-        ease: 'Cubic.easeOut',
-        onComplete: () => {
+    });
+
+    component.on('pointerup', () => {
+      if (!component.getData('isInPanel')) {
+        const clickTime = component.getData('clickTime');
+        const clickDuration = this.time.now - clickTime;
+        
+        // Only process if click was short (not a drag)
+        if (clickDuration < 200) {
+          const logicComp = component.getData('logicComponent');
+          
+          // Handle switch toggle
+          if (logicComp && logicComp.type === 'switch') {
+            logicComp.toggle();
+            
+            const img = component.getByName('switchImage') 
+              || component.list.find(child => child.type === 'Image');
+            
+            if (img) {
+              img.setTexture(logicComp.is_on ? 'stikalo-on' : 'stikalo-off');
+            }
+            
+            this.scheduleSimulation();
+            return;
+          }
+          
+          // Handle rotation - simple and direct
+          component.angle = (component.angle + 90) % 360;
           this.updateLogicNodePositions(component);
+          this.scheduleSimulation();
         }
-      });
-    }
-  }
-});
-
-
-    component.on('pointerover', () => {
-      component.setScale(1.1);
+      }
     });
 
-    component.on('pointerout', () => {
-      component.setScale(1);
-    });
+    return component;
   }
 
   removeComponentFromCircuit(component) {
     const logicComp = component.getData('logicComponent');
     if (logicComp) {
-      // Remove from graph components
       const index = this.graph.components.indexOf(logicComp);
       if (index > -1) {
         this.graph.components.splice(index, 1);
       }
-      
-      // Remove nodes
+
       if (logicComp.start) {
         this.graph.nodes.delete(logicComp.start.id);
       }
@@ -834,22 +765,21 @@ component.on('pointerup', (pointer) => {
         this.graph.nodes.delete(logicComp.end.id);
       }
     }
-    
-    // Remove visual effects
+
     this.circuitVisuals.removeGlowEffect(component);
     this.circuitVisuals.hideComponentValue(component);
-    
-    // Remove from placed components
+
     const placedIndex = this.placedComponents.indexOf(component);
     if (placedIndex > -1) {
       this.placedComponents.splice(placedIndex, 1);
     }
+
+    this.scheduleSimulation();
   }
 
   checkCircuit() {
     const currentChallenge = this.circuitChallenges[this.currentChallengeIndex];
     const placedTypes = this.placedComponents.map(comp => comp.getData('type'));
-    console.log("components", placedTypes);
     this.checkText.setStyle({ color: '#cc0000' });
 
     if (!currentChallenge.requiredComponents.every(req => placedTypes.includes(req))) {
@@ -873,41 +803,36 @@ component.on('pointerup', (pointer) => {
     const currentLevel = parseInt(localStorage.getItem('currentCircuitChallengeIndex') || '0');
     const highestReached = parseInt(localStorage.getItem('highestCircuitChallengeIndex') || '0');
 
-    // If they completed a level at or above their highest, unlock the next one
     if (currentLevel >= highestReached) {
-        const nextLevel = currentLevel + 1;
-        localStorage.setItem('highestCircuitChallengeIndex', nextLevel.toString());
-        // Optionally auto-advance to next level
-        localStorage.setItem('currentCircuitChallengeIndex', nextLevel.toString());
+      const nextLevel = currentLevel + 1;
+      localStorage.setItem('highestCircuitChallengeIndex', nextLevel.toString());
+      localStorage.setItem('currentCircuitChallengeIndex', nextLevel.toString());
     }
-    
+
     if (currentChallenge.theory) {
       this.showTheory(currentChallenge.theory);
-    }
-    else {
+    } else {
       this.checkText.setStyle({ color: '#00aa00' });
       this.checkText.setText('Čestitke! Krog je pravilen.');
       this.addPoints(10);
       this.time.delayedCall(2000, () => this.nextChallenge());
     }
   }
+
   nextChallenge() {
     this.currentChallengeIndex++;
     localStorage.setItem('currentCircuitChallengeIndex', this.currentChallengeIndex.toString());
     this.checkText.setText('');
 
-    // Reset circuit for next challenge
     this.resetCircuit();
-    
-    // Clear placed components
+
     this.placedComponents.forEach(comp => {
       this.circuitVisuals.removeGlowEffect(comp);
       this.circuitVisuals.hideComponentValue(comp);
       comp.destroy();
     });
     this.placedComponents = [];
-    
-    // Reset graph
+
     this.graph = new CircuitGraph();
 
     if (this.currentChallengeIndex < this.circuitChallenges.length) {
@@ -918,7 +843,7 @@ component.on('pointerup', (pointer) => {
     }
   }
 
-    addPoints(points) {
+  addPoints(points) {
     const user = localStorage.getItem('username');
     const users = JSON.parse(localStorage.getItem('users')) || [];
     const userData = users.find(u => u.username === user);
@@ -931,7 +856,7 @@ component.on('pointerup', (pointer) => {
   showTheory(theoryText) {
     const { width, height } = this.cameras.main;
 
-    this.theoryBack = this.add.rectangle(width / 2, height /2, width + 100, 150, 0x000000, 0.8)
+    this.theoryBack = this.add.rectangle(width / 2, height / 2, width + 100, 150, 0x000000, 0.8)
       .setOrigin(0.5)
       .setDepth(10);
 
