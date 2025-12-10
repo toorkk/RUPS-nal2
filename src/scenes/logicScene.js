@@ -25,13 +25,13 @@ export default class LogicScene extends Phaser.Scene {
     const { width, height } = this.cameras.main;
 
     // Initialize placedComponents BEFORE using it
-    this.placedComponents = [];  // MOVE THIS HERE
-    this.gridSize = 40;          // AND THIS
+    this.placedComponents = [];  
+    this.gridSize = 40;          
 
     // Initialize visual modules
     this.circuitVisuals = new CircuitVisuals(this);
     
-    // Initialize Wire System - ADD THIS LINE
+    // Initialize Wire System 
     this.wireSystem = new WireSystem(this);
 
     // Background
@@ -525,7 +525,6 @@ updateGateOutput(container, gateType) {
     this.inputStates = {
         A: 0,
         B: 0,
-        Power: 1 // Always 1
     };
     
     // Create A input
@@ -534,11 +533,8 @@ updateGateOutput(container, gateType) {
     // Create B input
     this.inputB = this.createToggleInput('B', 0, 80);
     
-    // Create power input - ALWAYS 1, not toggleable
-    this.powerInput = this.createPowerInput('Power', 0, 160);
-    
     // Add all to container
-    this.inputControls.add([this.inputA, this.inputB, this.powerInput]);
+    this.inputControls.add([this.inputA, this.inputB]);
     
     // Update visual states immediately
     this.updateInputVisuals();
@@ -623,12 +619,13 @@ updateGateOutput(container, gateType) {
     return container;
   }
 
-  toggleInput(inputName) {
-    // Toggle between 0 and 1 (except for Power which is always 1)
-    if (inputName !== 'Power') {
-      this.inputStates[inputName] = this.inputStates[inputName] === 0 ? 1 : 0;
-    }
+
     
+toggleInput(inputName) {
+    console.log(`Toggling ${inputName} from ${this.inputStates[inputName]} to ${this.inputStates[inputName] === 0 ? 1 : 0}`);
+    
+    this.inputStates[inputName] = this.inputStates[inputName] === 0 ? 1 : 0;
+
     // Update visuals
     this.updateInputVisuals();
     
@@ -684,8 +681,36 @@ updateGateOutput(container, gateType) {
       if (gateType) {
         this.updateGateOutput(component, gateType);
       }
+              // Also update any visual connections/wires
+    if (this.circuitVisuals) {
+            this.circuitVisuals.updateWireColors(component);
+        }
     });
-  }
+    
+    console.log(`Circuit updated: A=${this.inputStates.A}, B=${this.inputStates.B}`);
+    };
+ updateInputs(inputs) {
+    // Update gate state based on inputs
+    this.inputA = inputs.A;
+    this.inputB = inputs.B;
+    
+    // Calculate output based on NAND logic
+    this.output = this.powered ? (this.inputA && this.inputB ? 0 : 1) : 0;
+    
+    // Update visual state
+    this.updateVisualState();
+}
+
+updateVisualState() {
+    // Update the visual representation
+    if (this.output === 1) {
+        // Visual for output 1 (green, glowing, etc.)
+        this.setTint(0x00ff00);
+    } else {
+        // Visual for output 0 (red, dim, etc.)
+        this.setTint(0xff0000);
+    }
+}
 
   checkCircuit() {
     const currentChallenge = this.logicChallenges[this.currentChallengeIndex];
@@ -771,19 +796,32 @@ updateGateOutput(container, gateType) {
       this.circuitVisuals.resetAllVisuals(this.placedComponents);
     }
     
-    // Reset logic components
+    console.log(this.placedComponents);
+ 
     this.placedComponents.forEach(comp => {
       const logicComp = comp.getData('logicComponent');
       if (logicComp && typeof logicComp.reset === 'function') {
         logicComp.reset();
       }
+        console.log('Destroying component:', comp.getData('type'));
+        
+        // Remove all listeners first
+        if (comp.inputPins) {
+            comp.inputPins.forEach(pin => {
+                pin.removeAllListeners();
+            });
+        }
+        
+        // Remove the container from the scene
+        comp.destroy();
     });
     
-    // RESET INPUT STATES TO DEFAULT (except Power which is always 1)
+    // Clear the array
+    this.placedComponents = [];
+    // RESET INPUT STATES TO DEFAULT
     this.inputStates = {
-      A: 0,
-      B: 0,
-      Power: 1  // Always 1
+        A: 0,
+        B: 0,
     };
     
     // Update input visuals
@@ -800,4 +838,6 @@ updateGateOutput(container, gateType) {
     // Reset status text
     this.checkText.setText('');
   }
+
 }
+
