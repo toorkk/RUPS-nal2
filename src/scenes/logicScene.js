@@ -423,24 +423,7 @@ export default class LogicScene extends Phaser.Scene {
   container.pins.A = inputA;
   container.pins.B = inputB;
   container.pins.C = outputC;
-  
-  // Toggle input on click
-  inputA.on('pointerdown', (pointer) => {
-    // Prevent triggering wire drawing when clicking on pins
-    pointer.event.stopPropagation();
-    container.inputStates.A = container.inputStates.A ? 0 : 1;
-    inputA.setFillStyle(container.inputStates.A ? 0x00aa00 : 0x666666);
-    this.updateGateOutput(container, gateType);
-  });
-  
-  inputB.on('pointerdown', (pointer) => {
-    // Prevent triggering wire drawing when clicking on pins
-    pointer.event.stopPropagation();
-    container.inputStates.B = container.inputStates.B ? 0 : 1;
-    inputB.setFillStyle(container.inputStates.B ? 0x00aa00 : 0x666666);
-    this.updateGateOutput(container, gateType);
-  });
-  
+
   container.add([inputA, labelA, inputB, labelB, outputC, labelC]);
 }
 
