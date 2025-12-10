@@ -119,8 +119,8 @@ export default class LevelScene extends Phaser.Scene {
             }
         }
         
-        // Create logic level buttons (3 levels)
-        const logicLevels = 3;
+        // Create logic level buttons
+        const logicLevels = 5;
         
         for (let i = 0; i < logicLevels; i++) {
             const level = i;
@@ -148,7 +148,7 @@ export default class LevelScene extends Phaser.Scene {
                 1
             ).setStrokeStyle(isCurrentlySelected ? 4 : 2, isCurrentlySelected ? 0xFFEB3B : 0xffffff);
             
-            const gateNames = ['NOT', 'XOR', 'NOR'];
+            const gateNames = ['NOT', 'AND', 'OR', 'NOR', 'XOR'];
             const labelText = unlocked 
                 ? `${gateNames[level]}${isCurrentlySelected ? ' ✓' : ''}` 
                 : `🔒 ${gateNames[level]}`;
