@@ -160,7 +160,7 @@ export default class LogicScene extends Phaser.Scene {
     this.add.rectangle(0, 0, panelWidth, height, 0xc0c0c0).setOrigin(0);
     this.add.rectangle(0, 0, panelWidth, height, 0x000000, 0.2).setOrigin(0);
 
-    this.createInputControls(); // Create A, B, and Power inputs
+    this.createInputControls();
 
     this.add.text(panelWidth / 2, 60, 'Logična vrata', {
       fontSize: '18px',
@@ -190,11 +190,184 @@ export default class LogicScene extends Phaser.Scene {
 
     // Spawn logic gate based on current challenge
     this.spawnLogicGate();
-
-    // REMOVE THESE LINES - they're already initialized at the top
-    // this.placedComponents = [];
-    // this.gridSize = 40;
   }
+
+  createInputControls() {
+    const panelWidth = 150;
+    const { height } = this.cameras.main;
+    
+    // Create input controls container
+    this.inputControls = this.add.container(panelWidth + 20, 100);
+    
+    // Initialize input states
+    this.inputStates = {
+        A: 0,
+        B: 0,
+        Power: 1 // Always 1
+    };
+    
+    // Create A input
+    this.inputA = this.createToggleInput('A', 0, 0);
+    
+    // Create B input
+    this.inputB = this.createToggleInput('B', 0, 80);
+    
+    // Create power input - ALWAYS 1, not toggleable
+    this.powerInput = this.createPowerInput('Power', 0, 160);
+    
+    // Add all to container
+    this.inputControls.add([this.inputA, this.inputB, this.powerInput]);
+    
+    // Update visual states immediately
+    this.updateInputVisuals();
+    
+    // Debug: Add click event logging
+    console.log('Input controls created');
+}
+
+createToggleInput(label, x, y) {
+    const container = this.add.container(x, y);
+    
+    // Background rectangle
+    const bg = this.add.rectangle(0, 0, 60, 60, 0x666666);
+    bg.setStrokeStyle(2, 0x000000);
+    
+    // Label text
+    const labelText = this.add.text(0, -30, label, {
+        fontSize: '18px',
+        color: '#000000',
+        fontWeight: 'bold'
+    }).setOrigin(0.5);
+    
+    // Value display - default 0
+    const valueDisplay = this.add.text(0, 0, '0', {
+        fontSize: '24px',
+        color: '#ff0000',
+        fontWeight: 'bold'
+    }).setOrigin(0.5);
+    
+    // Store references
+    container.bg = bg;
+    container.valueDisplay = valueDisplay;
+    container.label = label;
+    
+    // Make the background interactive
+    bg.setInteractive({ useHandCursor: true });
+    
+    // Pointer events
+    bg.on('pointerover', () => {
+        const currentState = this.inputStates[label];
+        if (currentState === 0) {
+            bg.setFillStyle(0x888888); // Gray on hover when off
+        }
+    });
+    
+    // IMPORTANT: Use arrow function to preserve 'this' context
+    bg.on('pointerdown', () => {
+        console.log(`${label} clicked`);
+        this.toggleInput(label);
+    });
+    
+    container.add([bg, labelText, valueDisplay]);
+    return container;
+}
+
+createPowerInput(label, x, y) {
+    const container = this.add.container(x, y);
+    
+    // Background rectangle - always green
+    const bg = this.add.rectangle(0, 0, 60, 60, 0x006600);
+    bg.setStrokeStyle(2, 0x000000);
+    
+    // Label text
+    const labelText = this.add.text(0, -30, label, {
+        fontSize: '18px',
+        color: '#000000',
+        fontWeight: 'bold'
+    }).setOrigin(0.5);
+    
+    // Value display - always 1 and green
+    const valueDisplay = this.add.text(0, 0, '1', {
+        fontSize: '24px',
+        color: '#00ff00',
+        fontWeight: 'bold'
+    }).setOrigin(0.5);
+    
+    // Store references
+    container.bg = bg;
+    container.valueDisplay = valueDisplay;
+    container.label = label;
+    
+    // Power is NOT interactive - no pointer events
+    
+    container.add([bg, labelText, valueDisplay]);
+    return container;
+}
+
+toggleInput(inputName) {
+    console.log(`Toggling ${inputName} from ${this.inputStates[inputName]} to ${this.inputStates[inputName] === 0 ? 1 : 0}`);
+    
+    // Toggle between 0 and 1 (except for Power which is always 1)
+    if (inputName !== 'Power') {
+        this.inputStates[inputName] = this.inputStates[inputName] === 0 ? 1 : 0;
+    }
+    
+    // Update visuals
+    this.updateInputVisuals();
+    
+    // Update all placed components with new input values
+    this.updateCircuitInputs();
+}
+
+updateInputVisuals() {
+    // Update A input
+    if (this.inputA && this.inputA.valueDisplay) {
+        const aState = this.inputStates.A;
+        this.inputA.valueDisplay.setText(aState.toString());
+        this.inputA.valueDisplay.setColor(aState === 1 ? '#00ff00' : '#ff0000');
+        this.inputA.bg.setFillStyle(aState === 1 ? 0x006600 : 0x666666);
+        console.log(`A updated to: ${aState}`);
+    }
+    
+    // Update B input
+    if (this.inputB && this.inputB.valueDisplay) {
+        const bState = this.inputStates.B;
+        this.inputB.valueDisplay.setText(bState.toString());
+        this.inputB.valueDisplay.setColor(bState === 1 ? '#00ff00' : '#ff0000');
+        this.inputB.bg.setFillStyle(bState === 1 ? 0x006600 : 0x666666);
+        console.log(`B updated to: ${bState}`);
+    }
+    
+    // Update Power input (always 1 and green)
+    if (this.powerInput && this.powerInput.valueDisplay) {
+        // Always show 1 and green for power
+        this.powerInput.valueDisplay.setText('1');
+        this.powerInput.valueDisplay.setColor('#00ff00');
+        this.powerInput.bg.setFillStyle(0x006600); // Always green
+        console.log('Power updated (always 1)');
+    }
+}
+
+updateCircuitInputs() {
+    // Update all placed logic components with current input values
+    this.placedComponents.forEach(component => {
+        const logicComp = component.getData('logicComponent');
+        if (logicComp && logicComp.updateInputs) {
+            logicComp.updateInputs({
+                A: this.inputStates.A,
+                B: this.inputStates.B,
+                power: this.inputStates.Power
+            });
+        }
+        
+        // Also update any visual connections/wires
+        if (this.circuitVisuals) {
+            this.circuitVisuals.updateWireColors(component);
+        }
+    });
+    
+    console.log(`Circuit updated: A=${this.inputStates.A}, B=${this.inputStates.B}, Power=${this.inputStates.Power}`);
+}
 
   createLogicGateButton(x, y, gateType, label, color) {
     const button = this.add.container(x, y);
@@ -227,37 +400,200 @@ export default class LogicScene extends Phaser.Scene {
     });
     
     button.on('pointerdown', () => {
-      // Set this as the current logic challenge
-      let challengeIndex = 0;
-      switch(gateType) {
-        case 'nand':
-          challengeIndex = 0;
-          break;
-        case 'xor':
-          challengeIndex = 1;
-          break;
-        case 'nor':
-          challengeIndex = 2;
-          break;
-      }
-      
-      localStorage.setItem('currentLogicChallengeIndex', challengeIndex.toString());
-      this.currentChallengeIndex = challengeIndex;
-      
-      // Reset and spawn the selected gate
-      this.resetCircuit();
-      this.spawnLogicGate();
-      this.promptText.setText(this.logicChallenges[challengeIndex].prompt);
+      // Create a new placeable gate instead of changing challenge
+      this.createPlaceableGate(gateType, this.input.activePointer.x, this.input.activePointer.y);
     });
     
     return button;
   }
 
+createPlaceableGate(gateType, x, y) {
+  // Create a draggable gate container
+  const container = this.add.container(x, y);
+  
+  // Make it draggable
+  container.setInteractive(new Phaser.Geom.Rectangle(-50, -30, 100, 60), Phaser.Geom.Rectangle.Contains);
+  this.input.setDraggable(container);
+  
+  // Enable dragging and update position during drag
+  this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
+    if (gameObject === container) {
+      container.setPosition(dragX, dragY);
+    }
+  });
+  
+  // Snap to grid on drag end
+  container.on('dragend', (pointer) => {
+    const snapX = Math.round(pointer.x / this.gridSize) * this.gridSize;
+    const snapY = Math.round(pointer.y / this.gridSize) * this.gridSize;
+    container.setPosition(snapX, snapY);
+  });
+  
+  // Different visuals based on gate type
+  const graphics = this.add.graphics();
+  
+  switch(gateType) {
+    case 'nand':
+      // Draw NAND gate
+      graphics.fillStyle(0xffffff, 1);
+      graphics.lineStyle(3, 0x000000, 1);
+      graphics.fillRoundedRect(-50, -30, 100, 60, 12);
+      graphics.strokeRoundedRect(-50, -30, 100, 60, 12);
+      graphics.strokeCircle(55, 0, 6);
+      
+      const nandLabel = this.add.text(0, 0, 'NAND', {
+        fontSize: '14px',
+        color: '#000000',
+        fontStyle: 'bold'
+      }).setOrigin(0.5);
+      
+      container.add([graphics, nandLabel]);
+      this.addGatePins(container, gateType);
+      break;
+      
+    case 'nor':
+      // Draw NOR gate
+      graphics.lineStyle(3, 0x000000, 1);
+      graphics.fillStyle(0xffffff, 1);
+      
+      graphics.beginPath();
+      graphics.moveTo(-35, -45);
+      graphics.lineTo(45, 0);
+      graphics.lineTo(-35, 45);
+      graphics.closePath();
+      graphics.fillPath();
+      graphics.strokePath();
+      graphics.strokeCircle(55, 0, 6);
+      
+      const norLabel = this.add.text(0, 0, 'NOR', {
+        fontSize: '14px',
+        color: '#000000',
+        fontStyle: 'bold'
+      }).setOrigin(0.5);
+      
+      container.add([graphics, norLabel]);
+      this.addGatePins(container, gateType);
+      break;
+      
+    case 'xor':
+      // Draw XOR gate
+      graphics.lineStyle(3, 0x000000, 1);
+      graphics.fillStyle(0xffffff, 1);
+      
+      // XOR curved part
+      graphics.beginPath();
+      graphics.arc(-65, 0, 25, -Math.PI / 2, Math.PI / 2, false);
+      graphics.strokePath();
+      
+      // XOR triangle
+      graphics.beginPath();
+      graphics.moveTo(-35, -45);
+      graphics.lineTo(45, 0);
+      graphics.lineTo(-35, 45);
+      graphics.closePath();
+      graphics.fillPath();
+      graphics.strokePath();
+      
+      const xorLabel = this.add.text(0, 0, 'XOR', {
+        fontSize: '14px',
+        color: '#000000',
+        fontStyle: 'bold'
+      }).setOrigin(0.5);
+      
+      container.add([graphics, xorLabel]);
+      this.addGatePins(container, gateType);
+      break;
+  }
+  
+  // Add to placed components
+  container.setData('type', gateType);
+  container.setData('logicComponent', {
+    reset: () => {
+      // Reset logic if needed
+      if (container.inputPins) {
+        container.inputPins.forEach(pin => pin.setFillStyle(0x666666));
+      }
+      if (container.outputPin) {
+        container.outputPin.setFillStyle(0x666666);
+      }
+    }
+  });
+  
+  this.placedComponents.push(container);
+  return container;
+}
+
+  addGatePins(container, gateType) {
+    const pinRadius = 10;
+    
+    // Input pins
+    const inputA = this.add.circle(-65, -12, pinRadius, 0x666666)
+      .setInteractive({ useHandCursor: true });
+    const labelA = this.add.text(-80, -12, 'A', {
+      fontSize: '14px',
+      color: '#000000'
+    }).setOrigin(0.5);
+    
+    const inputB = this.add.circle(-65, 12, pinRadius, 0x666666)
+      .setInteractive({ useHandCursor: true });
+    const labelB = this.add.text(-80, 12, 'B', {
+      fontSize: '14px',
+      color: '#000000'
+    }).setOrigin(0.5);
+    
+    // Output pin
+    const outputC = this.add.circle(75, 0, pinRadius, 0x666666);
+    const labelC = this.add.text(92, 0, 'C', {
+      fontSize: '14px',
+      color: '#000000'
+    }).setOrigin(0.5);
+    
+    // Store references for logic
+    container.inputPins = [inputA, inputB];
+    container.outputPin = outputC;
+    container.inputStates = { A: 0, B: 0 };
+    
+    // Toggle input on click
+    inputA.on('pointerdown', () => {
+      container.inputStates.A = container.inputStates.A ? 0 : 1;
+      inputA.setFillStyle(container.inputStates.A ? 0x00aa00 : 0x666666);
+      this.updateGateOutput(container, gateType);
+    });
+    
+    inputB.on('pointerdown', () => {
+      container.inputStates.B = container.inputStates.B ? 0 : 1;
+      inputB.setFillStyle(container.inputStates.B ? 0x00aa00 : 0x666666);
+      this.updateGateOutput(container, gateType);
+    });
+    
+    container.add([inputA, labelA, inputB, labelB, outputC, labelC]);
+  }
+
+  updateGateOutput(container, gateType) {
+    const { A, B } = container.inputStates;
+    let output;
+    
+    switch(gateType) {
+      case 'nand':
+        output = !(A && B) ? 1 : 0;
+        break;
+      case 'nor':
+        output = !(A || B) ? 1 : 0;
+        break;
+      case 'xor':
+        output = (A !== B) ? 1 : 0;
+        break;
+    }
+    
+    container.outputPin.setFillStyle(output ? 0x00aa00 : 0x666666);
+    container.setData('output', output);
+  }
+
   getLogicGateDetails(gateType) {
     const details = {
-      'nand': 'NAND (NOT-AND)\nIzhod: 0 samo, ko sta oba vhoda 1',
-      'nor': 'NOR (NOT-OR)\nIzhod: 1 samo, ko sta oba vhoda 0',
-      'xor': 'XOR (EXCLUSIVE OR)\nIzhod: 1 samo, ko sta vhoda različna'
+      'nand': 'NAND (NOT-AND)\nIzhod: 0 samo, ko sta oba vhoda 1\nPovleci na delovno površino',
+      'nor': 'NOR (NOT-OR)\nIzhod: 1 samo, ko sta oba vhoda 0\nPovleci na delovno površino',
+      'xor': 'XOR (EXCLUSIVE OR)\nIzhod: 1 samo, ko sta vhoda različna\nPovleci na delovno površino'
     };
     return details[gateType] || 'Logična vrata';
   }
@@ -485,53 +821,23 @@ updateVisualState() {
     }
 }
 
-checkCircuit() {
-  const currentChallenge = this.logicChallenges[this.currentChallengeIndex];
-  if (!currentChallenge) {
-    this.checkText.setText('Najprej izberi logična vrata');
-    return;
-  }
-
-  // --- Logic for points and success message (Unchanged) ---
-  this.checkText.setStyle({ color: '#00aa00' });
-  this.checkText.setText('Pravilno! Preuči delovanje vrat.');
-  this.addPoints(5);
-  // --------------------------------------------------------
-
-  // 1. Get the current highest *completed* level index
-    const highest = parseInt(localStorage.getItem('highestLogicChallengeIndex')) || 0;
-    const newHighest = this.currentChallengeIndex + 1;
-
-    if (newHighest > highest) {
-        localStorage.setItem('highestLogicChallengeIndex', newHighest.toString());
+  checkCircuit() {
+    const currentChallenge = this.logicChallenges[this.currentChallengeIndex];
+    if (!currentChallenge) {
+      this.checkText.setText('Najprej izberi logična vrata');
+      return;
     }
 
+    // Just show success message without progressing to next level
+    this.checkText.setStyle({ color: '#00aa00' });
+    this.checkText.setText('Pravilno! Preuči delovanje vrat.');
+    this.addPoints(5);
 
-  // Check if the current level is a NEW highest completed level
-  if (this.currentChallengeIndex >= highestIndex) {
-    
-    // Save the current index as the new highest completed index.
-    localStorage.setItem('highestLogicChallengeIndex', this.currentChallengeIndex.toString());
-    
-    // Check if there is a next level to unlock/inform about
-    const nextLevelIndex = this.currentChallengeIndex + 1;
-    if (nextLevelIndex < this.logicChallenges.length) {
-        const gateNames = ['NAND', 'XOR', 'NOR'];
-        const nextGate = gateNames[nextLevelIndex];
-        
-        // Update the success message to confirm the next level unlock
-        this.checkText.setText(`Pravilno! Odklepljeni so ${nextGate} vrata!`);
-    } else {
-        // All levels completed
-        this.checkText.setText('Pravilno! Vsi logični izzivi končani!');
+    // Show theory if available
+    if (currentChallenge.theory) {
+      this.showTheory(currentChallenge.theory);
     }
   }
-  
-  // --- Logic for showing theory (Unchanged) ---
-  if (currentChallenge.theory) {
-    this.showTheory(currentChallenge.theory);
-  }
-}
 
   addPoints(points) {
     const user = localStorage.getItem('username');
@@ -543,16 +849,14 @@ checkCircuit() {
     localStorage.setItem('users', JSON.stringify(users));
   }
 
-showTheory(theoryText) {
+  showTheory(theoryText) {
     const { width, height } = this.cameras.main;
 
     this.theoryBack = this.add.rectangle(width / 2, height /2, width + 100, 150, 0x000000, 0.8)
         .setOrigin(0.5)
         .setDepth(10);
 
-    // UPDATE: Add next level button if there are more levels
-    const isLastLevel = this.currentChallengeIndex >= this.logicChallenges.length - 1;
-    
+    // Remove level progression logic
     this.theoryText = this.add.text(width / 2, height / 2, theoryText, {
         fontSize: '16px',
         color: '#ffffff',
@@ -562,32 +866,9 @@ showTheory(theoryText) {
     })
         .setOrigin(0.5)
         .setDepth(11);
-
-    // UPDATE: Add next level button if not the last level
-    if (!isLastLevel) {
-        this.nextLevelButton = this.add.text(width / 2 + 150, height / 2 + 70, 'Naprej na naslednja vrata', {
-        fontSize: '18px',
-        color: '#00cc00',
-        backgroundColor: '#ffffff',
-        padding: { x: 20, y: 10 }
-        })
-        .setOrigin(0.5)
-        .setDepth(11)
-        .setInteractive({ useHandCursor: true })
-        .on('pointerover', () => this.nextLevelButton.setStyle({ color: '#009900' }))
-        .on('pointerout', () => this.nextLevelButton.setStyle({ color: '#00cc00' }))
-        .on('pointerdown', () => {
-            // Go to next level
-            const nextLevelIndex = this.currentChallengeIndex + 1;
-            localStorage.setItem('currentLogicChallengeIndex', nextLevelIndex.toString());
-            this.currentChallengeIndex = nextLevelIndex;
-            this.spawnLogicGate();
-            this.promptText.setText(this.logicChallenges[nextLevelIndex].prompt);
-            this.checkText.setText('');
-            this.hideTheory();
-        });
-    } else {
-      this.continueButton = this.add.text(width / 2, height / 2 + 70, 'Zapri', {
+    
+    // Just show close button
+    this.continueButton = this.add.text(width / 2, height / 2 + 70, 'Zapri', {
         fontSize: '18px',
         color: '#00cc00',
         backgroundColor: '#ffffff',
@@ -601,7 +882,6 @@ showTheory(theoryText) {
         .on('pointerdown', () => {
             this.hideTheory();
         });
-    }
     }
 
     hideTheory() {
@@ -617,7 +897,6 @@ showTheory(theoryText) {
         this.continueButton.destroy();
         this.continueButton = null;
     }
-    // UPDATE: Also destroy next level button if it exists
     if (this.nextLevelButton) {
         this.nextLevelButton.destroy();
         this.nextLevelButton = null;

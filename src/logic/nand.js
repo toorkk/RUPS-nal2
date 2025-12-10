@@ -67,32 +67,7 @@ export function spawnNandForCurrentChallenge(scene) {
 
   container.add([circleA, labelA, circleB, labelB, circleC, labelC]);
 
-  // ----- LOGIC + PROGRESS -----
-  const updateProgress = () => {
-    const key = `${scene.nandState.a}-${scene.nandState.b}`;
-    if (scene.nandCombos[key] === false) {
-      scene.nandCombos[key] = true;
-    }
 
-    const allDone = Object.values(scene.nandCombos).every(v => v === true);
-    if (!allDone) return;
-
-    scene.checkText.setStyle({ color: '#00aa00' });
-    scene.checkText.setText('Odlično! Preizkusil si vse 4 kombinacije A in B.');
-
-    const currentLevel = parseInt(localStorage.getItem('currentLogicChallengeIndex') || '0', 10);
-    const highestReached = parseInt(localStorage.getItem('highestLogicChallengeIndex') || '0', 10);
-
-    if (currentLevel >= highestReached) {
-      const nextLevel = currentLevel + 1;
-      localStorage.setItem('highestLogicChallengeIndex', nextLevel.toString());
-      localStorage.setItem('currentLogicChallengeIndex', nextLevel.toString());
-    }
-
-    if (current.theory) {
-      scene.showTheory(current.theory);
-    }
-  };
 
   const setCircleState = () => {
     const on = 0x00aa00;
@@ -104,7 +79,6 @@ export function spawnNandForCurrentChallenge(scene) {
     circleB.setFillStyle(b ? on : off);
     circleC.setFillStyle(c ? on : off);
 
-    updateProgress();
   };
 
   setCircleState();

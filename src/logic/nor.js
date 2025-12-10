@@ -80,34 +80,7 @@ export function spawnNorForCurrentChallenge(scene) {
 
   container.add([circleA, labelA, circleB, labelB, circleC, labelC]);
 
-  // ----- logika + napredek za NOR -----
-  const updateProgress = () => {
-    const key = `${scene.norState.a}-${scene.norState.b}`;
-    if (scene.norCombos[key] === false) {
-      scene.norCombos[key] = true;
-    }
 
-    const allDone = Object.values(scene.norCombos).every(v => v === true);
-    if (!allDone) return;
-
-    scene.checkText.setStyle({ color: '#00aa00' });
-    scene.checkText.setText('Odlično! Preizkusil si vse 4 kombinacije A in B za NOR.');
-
-    const currentChallenge = scene.logicChallenges[scene.currentChallengeIndex];
-
-    const currentLevel = parseInt(localStorage.getItem('currentLogicChallengeIndex') || '0', 10);
-    const highestReached = parseInt(localStorage.getItem('highestLogicChallengeIndex') || '0', 10);
-
-    if (currentLevel >= highestReached) {
-      const nextLevel = currentLevel + 1;
-      localStorage.setItem('highestLogicChallengeIndex', nextLevel.toString());
-      localStorage.setItem('currentLogicChallengeIndex', nextLevel.toString());
-    }
-
-    if (currentChallenge.theory) {
-      scene.showTheory(currentChallenge.theory);
-    }
-  };
 
   const setCircleState = () => {
     const on = 0x00aa00;
@@ -119,7 +92,6 @@ export function spawnNorForCurrentChallenge(scene) {
     circleB.setFillStyle(b ? on : off);
     circleC.setFillStyle(c ? on : off);
 
-    updateProgress();
   };
 
   setCircleState();
