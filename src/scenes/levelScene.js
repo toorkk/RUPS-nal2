@@ -118,41 +118,39 @@ export default class LevelScene extends Phaser.Scene {
                     });
             }
         }
-        
-        // Create logic level buttons (3 levels)
-        const logicLevels = 3;
-        
+        const logicLevels = 6;
+
+        // Create logic level buttons
         for (let i = 0; i < logicLevels; i++) {
-            const level = i;
-            const unlocked = level <= maxLogicLevel;
-            const isCurrentlySelected = level === selectedLogicLevel;
-            
-            let bgColor;
-            if (!unlocked) {
-                bgColor = 0x555555; // Locked
-            } else if (isCurrentlySelected) {
-                bgColor = 0x7B1FA2; // Selected (purple)
-            } else {
-                bgColor = 0x9C27B0; // Unlocked (purple)
-            }
-            
-            const xPos = 3 * width / 4;
-            const yPos = gridStartY + i * spacingY;
-            
-            const bg = this.add.rectangle(
-                xPos, 
-                yPos, 
-                250, 
-                40,
-                bgColor, 
-                1
-            ).setStrokeStyle(isCurrentlySelected ? 4 : 2, isCurrentlySelected ? 0xFFEB3B : 0xffffff);
-            
-            const gateNames = ['NAND', 'XOR', 'NOR'];
-            const labelText = unlocked 
-                ? `${gateNames[level]}${isCurrentlySelected ? ' ✓' : ''}` 
-                : `🔒 ${gateNames[level]}`;
-            
+        const level = i;
+        const unlocked = level <= maxLogicLevel;
+        const isCurrentlySelected = level === selectedLogicLevel;
+        
+        let bgColor;
+        if (!unlocked) {
+            bgColor = 0x555555; // Locked
+        } else if (isCurrentlySelected) {
+            bgColor = 0x7B1FA2; // Selected (purple)
+        } else {
+            bgColor = 0x9C27B0; // Unlocked (purple)
+        }
+        
+        const xPos = 3 * width / 4;
+        const yPos = gridStartY + i * spacingY;
+        
+        const bg = this.add.rectangle(
+            xPos, 
+            yPos, 
+            250, 
+            40,
+            bgColor, 
+            1
+        ).setStrokeStyle(isCurrentlySelected ? 4 : 2, isCurrentlySelected ? 0xFFEB3B : 0xffffff);
+        
+        const gateNames = ['NOT', 'AND', 'OR', 'NOR', 'XOR']; // Keep 5 names for backward compatibility
+        const labelText = unlocked 
+            ? `${i === 0 ? 'NAND + NOT' : gateNames[i-1] || `Level ${i+1}`}${isCurrentlySelected ? ' ✓' : ''}` 
+            : `🔒 ${i === 0 ? 'NOT' : gateNames[i-1] || `Level ${i+1}`}`;
             const txt = this.add.text(
                 xPos, 
                 yPos,
@@ -196,21 +194,33 @@ export default class LevelScene extends Phaser.Scene {
             fontSize: '18px',
             color: '#ff4444'
         })
-
             .setOrigin(1, 0)
             .setInteractive({ useHandCursor: true })
             .on('pointerover', () => resetButton.setColor('#cc0000'))
             .on('pointerout', () => resetButton.setColor('#ff4444'))
             .on('pointerdown', () => {
-                // Clear progress
+                // Clear all progress
                 localStorage.removeItem('highestCircuitChallengeIndex');
                 localStorage.removeItem('currentCircuitChallengeIndex');
                 localStorage.removeItem('highestLogicChallengeIndex');
                 localStorage.removeItem('currentLogicChallengeIndex');
+                localStorage.removeItem('unlockedLogicGates'); // Add this line
+                
+                // Also clear any user-specific progress if you have it
+                const user = localStorage.getItem('username');
+                if (user) {
+                    const users = JSON.parse(localStorage.getItem('users')) || [];
+                    const userData = users.find(u => u.username === user);
+                    if (userData) {
+                        userData.score = 0; // Reset score too if you want
+                        // Reset any other user-specific progress
+                        localStorage.setItem('users', JSON.stringify(users));
+                    }
+                }
+                
                 // Reload scene
                 this.scene.restart();
-            }
-        );
+            });
         // BACK button
         const backButton = this.add.text(20, 20, '↩ Nazaj na izbiro', {
             fontSize: '22px',
