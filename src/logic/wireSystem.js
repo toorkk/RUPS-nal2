@@ -7,6 +7,14 @@ export class WireSystem {
         this.currentWire = null;
         this.startPin = null;
         this.wireGraphics = null;
+        this.updateInProgress = false; // NEW: Flag to prevent recursive updates
+        
+        // Wire color definitions
+        this.wireColors = {
+            default: 0x666666,  // Gray for unconnected/drawing
+            high: 0x00ff00,     // Green for logic 1
+            low: 0xff0000       // Red for logic 0
+        };
         
         this.setupWireDrawing();
     }
@@ -33,8 +41,9 @@ export class WireSystem {
             this.currentWire = {
                 start: { x: pin.worldX, y: pin.worldY },
                 end: { x: pointer.x, y: pointer.y },
-                color: 0x666666,
-                connected: false
+                color: this.wireColors.default,
+                connected: false,
+                value: 0  // Default value for drawing wire
             };
             
             console.log('Started drawing wire from pin:', pin);
@@ -60,14 +69,18 @@ export class WireSystem {
                 endPin: endPin,
                 start: { x: this.startPin.worldX, y: this.startPin.worldY },
                 end: { x: endPin.worldX, y: endPin.worldY },
-                color: 0x666666,
-                connected: true
+                color: this.getWireColorBasedOnValue(0), // Start with low state
+                connected: true,
+                value: 0 // Initial value
             };
             
             this.wires.push(wire);
             
             // Connect pins logically
             this.connectPins(this.startPin, endPin);
+            
+            // Immediately update wire color based on initial state
+            this.updateWireValue(wire);
             
             console.log('Wire created between pins:', this.startPin, endPin);
         }
@@ -80,73 +93,73 @@ export class WireSystem {
     }
     
     findPinAt(x, y) {
-        // Search through all placed components for pins
-        for (const component of this.scene.placedComponents) {
-            const pins = component.getData('pins') || [];
-            
-            for (const pin of pins) {
-                const pinWorldX = component.x + pin.x;
-                const pinWorldY = component.y + pin.y;
-                const distance = Phaser.Math.Distance.Between(x, y, pinWorldX, pinWorldY);
+    // Search through all placed components for pins
+    for (const component of this.scene.placedComponents) {
+        if (component.pins) {
+            for (const pinName in component.pins) {
+                const pin = component.pins[pinName];
+                const worldX = component.x + (pin.x || 0);
+                const worldY = component.y + (pin.y || 0);
+                const distance = Phaser.Math.Distance.Between(x, y, worldX, worldY);
                 if (distance < 15) { // Pin hit radius
                     return {
                         component: component,
                         pin: pin,
-                        worldX: pinWorldX,
-                        worldY: pinWorldY,
-                        type: pin.type,
-                        name: pin.name
+                        worldX: worldX,
+                        worldY: worldY,
+                        type: pin.getData('type'),
+                        name: pin.getData('name'),
+                        signal: pin.getData('signal')
                     };
                 }
             }
         }
+    }
+    
+    // Check input controls
+    if (this.scene.inputControls) {
+        const inputComponents = [this.scene.inputA, this.scene.inputB];
         
-        // Also check input controls
-        if (this.scene.inputControls) {
-            const inputComponents = [
-                { 
-                    component: 'A', 
-                    control: this.scene.inputA, 
-                    type: 'output', 
-                    name: 'A',
-                    worldX: this.scene.inputControls.x + this.scene.inputA.x, 
-                    worldY: this.scene.inputControls.y + this.scene.inputA.y + 30 
-                },
-                { 
-                    component: 'B', 
-                    control: this.scene.inputB, 
-                    type: 'output', 
-                    name: 'B',
-                    worldX: this.scene.inputControls.x + this.scene.inputB.x, 
-                    worldY: this.scene.inputControls.y + this.scene.inputB.y + 30 
-                },
-                { 
-                    component: 'Power', 
-                    control: this.scene.powerInput, 
-                    type: 'output', 
-                    name: 'Power',
-                    worldX: this.scene.inputControls.x + this.scene.powerInput.x, 
-                    worldY: this.scene.inputControls.y + this.scene.powerInput.y + 30 
-                }
-            ];
-            
-            for (const input of inputComponents) {
-                const distance = Phaser.Math.Distance.Between(x, y, input.worldX, input.worldY);
+        for (const input of inputComponents) {
+            if (input && input.connectionArea) {
+                const worldX = this.scene.inputControls.x + input.x + 30; // Adjust for circle position
+                const worldY = this.scene.inputControls.y + input.y;
+                const distance = Phaser.Math.Distance.Between(x, y, worldX, worldY);
                 if (distance < 15) {
                     return {
-                        component: input.component,
-                        control: input.control,
-                        worldX: input.worldX,
-                        worldY: input.worldY,
-                        type: input.type,
-                        name: input.name
+                        component: input.label,
+                        control: input,
+                        worldX: worldX,
+                        worldY: worldY,
+                        type: 'output',
+                        name: input.label,
+                        signal: () => this.scene.inputStates[input.label] || 0
                     };
                 }
             }
         }
-        
-        return null;
     }
+    
+    // Check output pin
+    if (this.scene.outputConnectionArea) {
+        const worldX = this.scene.outputPinContainer.x;
+        const worldY = this.scene.outputPinContainer.y + 30; // Connection circle is at y=30 in container
+        const distance = Phaser.Math.Distance.Between(x, y, worldX, worldY);
+        if (distance < 25) { // Larger hit radius for output pin
+            return {
+                component: 'outputPin',
+                pin: this.scene.outputConnectionArea,
+                worldX: worldX,
+                worldY: worldY,
+                type: 'input',
+                name: 'output',
+                signal: () => this.scene.outputState || 0
+            };
+        }
+    }
+    
+    return null;
+}
     
     isValidConnection(startPin, endPin) {
         // Can't connect two outputs or two inputs
@@ -175,23 +188,49 @@ export class WireSystem {
             const component = inputPin.component;
             const pinName = inputPin.name;
             
+            // Get current value from output pin
+            const outputValue = this.getPinValue(outputPin);
+            
             // Store connection
             const connections = component.getData('connections') || {};
             connections[pinName] = {
                 source: outputPin,
-                value: this.getPinValue(outputPin)
+                value: outputValue
             };
             component.setData('connections', connections);
             
             // Update pin visual
             const pinGraphic = component.pins && component.pins[pinName];
             if (pinGraphic && pinGraphic.setFillStyle) {
-                const value = this.getPinValue(outputPin);
-                pinGraphic.setFillStyle(value ? 0x00aa00 : 0x666666);
+                const color = outputValue ? this.wireColors.high : this.wireColors.low;
+                pinGraphic.setFillStyle(color);
             }
             
             // Update gate output
             this.updateGateFromInputs(component);
+        } 
+        // Handle connection to output pin - FIXED
+        else if (inputPin.component === 'outputPin') {
+            // Store the connection in the wire system
+            // Create a connection object to track this wire's source
+            const connection = {
+                wire: this.wires[this.wires.length - 1], // The wire just created
+                source: outputPin
+            };
+            
+            // Store this connection reference on the wire itself
+            const wire = this.wires[this.wires.length - 1];
+            if (wire) {
+                wire.outputConnection = connection;
+                
+                // Set initial output value
+                const outputValue = this.getPinValue(outputPin);
+                this.scene.updateOutputDisplay(outputValue);
+                
+                // Also update the wire value immediately
+                wire.value = outputValue;
+                wire.color = this.getWireColorBasedOnValue(outputValue);
+            }
         }
     }
     
@@ -207,62 +246,149 @@ export class WireSystem {
     }
     
     updateGateFromInputs(component) {
-        const connections = component.getData('connections') || {};
-        const gateType = component.getData('type');
-        
-        let inputA = 0, inputB = 0;
-        
-        if (connections.A) {
-            inputA = this.getPinValue(connections.A.source);
-        }
-        if (connections.B) {
-            inputB = this.getPinValue(connections.B.source);
+        // Prevent recursive updates
+        if (this.updateInProgress) {
+            return;
         }
         
-        // Calculate output based on gate type
-        let output;
-        switch(gateType) {
-            case 'nand':
-                output = !(inputA && inputB) ? 1 : 0;
-                break;
-            case 'nor':
-                output = !(inputA || inputB) ? 1 : 0;
-                break;
-            case 'xor':
-                output = (inputA !== inputB) ? 1 : 0;
-                break;
-            default:
-                output = 0;
-        }
+        this.updateInProgress = true;
         
-        // Update output pin
-        const outputPin = component.pins && component.pins.C;
-        if (outputPin) {
-            outputPin.setFillStyle(output ? 0x00aa00 : 0x666666);
-            component.setData('output', output);
+        try {
+            const connections = component.getData('connections') || {};
+            const gateType = component.getData('type');
             
-            // Update wire colors
-            this.updateWireColors(component);
+            let inputA = 0, inputB = 0;
+            
+            if (connections.A) {
+                inputA = this.getPinValue(connections.A.source);
+                // Update the A input pin color
+                const inputACircle = component.visualPins && component.visualPins.A;
+                if (inputACircle && inputACircle.setFillStyle) {
+                    const color = inputA ? this.wireColors.high : this.wireColors.low;
+                    inputACircle.setFillStyle(color);
+                }
+            }
+            
+            if (connections.B) {
+                inputB = this.getPinValue(connections.B.source);
+                // Update the B input pin color
+                const inputBCircle = component.visualPins && component.visualPins.B;
+                if (inputBCircle && inputBCircle.setFillStyle) {
+                    const color = inputB ? this.wireColors.high : this.wireColors.low;
+                    inputBCircle.setFillStyle(color);
+                }
+            }
+            
+            // Store input states on the component
+            component.inputStates = { A: inputA, B: inputB };
+            
+            // Calculate output based on gate type
+            let output;
+            switch(gateType) {
+                case 'nand':
+                    output = !(inputA && inputB) ? 1 : 0;
+                    break;
+                case 'nor':
+                    output = !(inputA || inputB) ? 1 : 0;
+                    break;
+                case 'xor':
+                    output = (inputA !== inputB) ? 1 : 0;
+                    break;
+                default:
+                    output = 0;
+            }
+            
+            // Store the previous output value
+            const previousOutput = component.getData('output') || 0;
+            
+            // Only update if the output changed
+            if (output !== previousOutput) {
+                // Update output pin
+                const outputPin = component.pins && component.pins.C;
+                const outputVisual = component.visualPins && component.visualPins.C;
+                
+                if (outputVisual && outputVisual.setFillStyle) {
+                    const color = output ? this.wireColors.high : this.wireColors.low;
+                    outputVisual.setFillStyle(color);
+                }
+                
+                if (outputPin) {
+                    component.setData('output', output);
+                    
+                    // Update all wires connected to this component's output
+                    // Use setTimeout to break the call stack
+                    setTimeout(() => {
+                        this.updateWiresForComponent(component);
+                    }, 0);
+                }
+            }
+        } finally {
+            this.updateInProgress = false;
         }
     }
     
-    updateWireColors(component) {
-        // Update colors of all wires connected to this component
-        for (const wire of this.wires) {
-            const startComponent = wire.startPin.component;
-            const endComponent = wire.endPin.component;
+    updateWiresForComponent(component) {
+    const outputValue = component.getData('output') || 0;
+    
+    // Find all wires connected to this component's output
+    for (const wire of this.wires) {
+        const startComp = wire.startPin.component;
+        const endComp = wire.endPin.component;
+        
+        // If wire starts from this component's output
+        if (startComp === component && wire.startPin.type === 'output') {
+            wire.value = outputValue;
+            wire.color = this.getWireColorBasedOnValue(outputValue);
             
-            let state = 0;
-            if (startComponent === component || (typeof startComponent === 'string' && component === 'component')) {
-                state = this.getPinValue(wire.startPin);
-            } else if (endComponent === component || (typeof endComponent === 'string' && component === 'component')) {
-                state = this.getPinValue(wire.endPin);
+            // Update the connected input pin on the other end
+            if (endComp instanceof Phaser.GameObjects.Container) {
+                this.updateGateFromInputs(endComp);
             }
-            
-            wire.color = state ? 0x00ff00 : 0xff0000;
+            // Also check if it's connected to the output pin
+            else if (endComp === 'outputPin') {
+                this.scene.updateOutputDisplay(outputValue);
+            }
+        }
+    }
+    
+    this.drawWires();
+}
+    
+    updateWireValue(wire) {
+        // Determine which pin is the output (source of value)
+        let outputPin, inputPin;
+        if (wire.startPin.type === 'output') {
+            outputPin = wire.startPin;
+            inputPin = wire.endPin;
+        } else if (wire.endPin.type === 'output') {
+            outputPin = wire.endPin;
+            inputPin = wire.startPin;
         }
         
-        this.drawWires();
+        if (outputPin && inputPin) {
+            const value = this.getPinValue(outputPin);
+            wire.value = value;
+            wire.color = this.getWireColorBasedOnValue(value);
+            
+            // Update the connected input pin color
+            if (inputPin.component instanceof Phaser.GameObjects.Container) {
+                const component = inputPin.component;
+                const pinName = inputPin.name;
+                const pin = component.pins && component.pins[pinName];
+                if (pin && pin.setFillStyle) {
+                    const color = value ? this.wireColors.high : this.wireColors.low;
+                    pin.setFillStyle(color);
+                }
+            }
+            
+            return value;
+        }
+        
+        return 0;
+    }
+    
+    getWireColorBasedOnValue(value) {
+        return value ? this.wireColors.high : this.wireColors.low;
     }
     
     drawWires() {
@@ -318,57 +444,68 @@ export class WireSystem {
         this.drawWires();
     }
     
-    update() {
+update() {
+    // Update all wire values and colors
+    for (const wire of this.wires) {
         // Update wire positions if components moved
-        for (const wire of this.wires) {
-            // Update start position
-            if (typeof wire.startPin.component === 'string') {
-                // Input control
-                const state = this.scene.inputStates[wire.startPin.component] || 0;
-                wire.color = state ? 0x00ff00 : 0xff0000;
-                
-                // Update connection value if connected to a gate
-                if (wire.endPin.component instanceof Phaser.GameObjects.Container) {
-                    const connections = wire.endPin.component.getData('connections') || {};
-                    const pinName = wire.endPin.name;
-                    if (connections[pinName]) {
-                        connections[pinName].value = state;
-                        wire.endPin.component.setData('connections', connections);
-                        this.updateGateFromInputs(wire.endPin.component);
-                    }
-                }
-                
-                // Update visual position for input controls
-                wire.start.x = wire.startPin.worldX;
-                wire.start.y = wire.startPin.worldY;
-            } else {
-                // Update positions from component
-                const component = wire.startPin.component;
-                if (component) {
-                    const pin = wire.startPin.pin;
-                    wire.start.x = component.x + pin.x;
-                    wire.start.y = component.y + pin.y;
-                    
-                    // Update wire color based on output state
-                    const outputState = component.getData('output') || 0;
-                    wire.color = outputState ? 0x00ff00 : 0xff0000;
-                }
+        this.updateWirePositions(wire);
+        
+        // Update wire value
+        const newValue = this.updateWireValue(wire);
+        
+        // If value changed, update connected gates AND output pin
+        if (newValue !== wire.value) {
+            wire.value = newValue;
+            
+            // Determine which pin is the input (receiver of value)
+            const inputPin = wire.startPin.type === 'output' ? wire.endPin : wire.startPin;
+            
+            if (inputPin && inputPin.component instanceof Phaser.GameObjects.Container) {
+                this.updateGateFromInputs(inputPin.component);
             }
             
-            // Update end position
-            if (wire.endPin.component instanceof Phaser.GameObjects.Container) {
-                const component = wire.endPin.component;
-                const pin = wire.endPin.pin;
-                wire.end.x = component.x + pin.x;
-                wire.end.y = component.y + pin.y;
-            } else if (typeof wire.endPin.component === 'string') {
-                // Input control as end point
-                wire.end.x = wire.endPin.worldX;
-                wire.end.y = wire.endPin.worldY;
+            // Check if this wire is connected to the output pin
+            if (wire.endPin && wire.endPin.component === 'outputPin') {
+                this.scene.updateOutputDisplay(newValue);
+            }
+            // Also check if wire starts from output pin (unlikely but just in case)
+            else if (wire.startPin && wire.startPin.component === 'outputPin') {
+                this.scene.updateOutputDisplay(newValue);
+            }
+        }
+    }
+    
+    this.drawWires();
+}
+    
+    updateWirePositions(wire) {
+        // Update start position
+        if (typeof wire.startPin.component === 'string') {
+            // Input control
+            wire.start.x = wire.startPin.worldX;
+            wire.start.y = wire.startPin.worldY;
+        } else if (wire.startPin.component) {
+            const component = wire.startPin.component;
+            const pin = wire.startPin.pin;
+            if (component && pin) {
+                wire.start.x = component.x + (pin.x || 0);
+                wire.start.y = component.y + (pin.y || 0);
             }
         }
         
-        this.drawWires();
+        // Update end position
+        if (typeof wire.endPin.component === 'string') {
+            // Input control as end point
+            wire.end.x = wire.endPin.worldX;
+            wire.end.y = wire.endPin.worldY;
+        } else if (wire.endPin.component) {
+            const component = wire.endPin.component;
+            const pin = wire.endPin.pin;
+            if (component && pin) {
+                wire.end.x = component.x + (pin.x || 0);
+                wire.end.y = component.y + (pin.y || 0);
+            }
+        }
     }
     
     reset() {
@@ -377,5 +514,6 @@ export class WireSystem {
         this.drawingWire = false;
         this.currentWire = null;
         this.startPin = null;
+        this.updateInProgress = false;
     }
 }
