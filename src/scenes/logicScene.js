@@ -357,22 +357,6 @@ showTheory(theoryText) {
     })
         .setOrigin(0.5)
         .setDepth(11);
-
-    // Close button
-    this.continueButton = this.add.text(width / 2, height / 2 + 70, 'Zapri', {
-        fontSize: '18px',
-        color: '#0066ff',
-        backgroundColor: '#ffffff',
-        padding: { x: 20, y: 10 }
-    })
-        .setOrigin(0.5)
-        .setDepth(11)
-        .setInteractive({ useHandCursor: true })
-        .on('pointerover', () => this.continueButton.setStyle({ color: '#0044cc' }))
-        .on('pointerout', () => this.continueButton.setStyle({ color: '#0066ff' }))
-        .on('pointerdown', () => {
-        this.hideTheory();
-        });
     
     // UPDATE: Add next level button if not the last level
     if (!isLastLevel) {
@@ -395,6 +379,21 @@ showTheory(theoryText) {
             this.spawnLogicGate();
             this.promptText.setText(this.logicChallenges[nextLevelIndex].prompt);
             this.checkText.setText('');
+            this.hideTheory();
+        });
+    } else {
+      this.continueButton = this.add.text(width / 2, height / 2 + 70, 'Zapri', {
+        fontSize: '18px',
+        color: '#00cc00',
+        backgroundColor: '#ffffff',
+        padding: { x: 20, y: 10 }
+        })
+        .setOrigin(0.5)
+        .setDepth(11)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerover', () => this.continueButton.setStyle({ color: '#009900' }))
+        .on('pointerout', () => this.continueButton.setStyle({ color: '#00cc00' }))
+        .on('pointerdown', () => {
             this.hideTheory();
         });
     }
