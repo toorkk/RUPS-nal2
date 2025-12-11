@@ -301,6 +301,7 @@ export class WireSystem {
                 break;
             case 'not':
                 output = inputA === 0 ? 1 : 0; // Invert the input
+                console.log(`NOT gate: input=${inputA}, output=${output}`);
                 break;
             case 'and':
                 output = (inputA && inputB) ? 1 : 0;
@@ -356,6 +357,10 @@ updateWiresForComponent(component) {
             
             // Update the connected input pin on the other end
             if (endComp instanceof Phaser.GameObjects.Container) {
+                // Special handling for NOT gates
+                if (component.getData('type') === 'not') {
+                    console.log(`NOT gate output ${outputValue} -> Updating connected gate`);
+                }
                 this.updateGateFromInputs(endComp);
             }
             // Also check if it's connected to the output pin
@@ -366,6 +371,45 @@ updateWiresForComponent(component) {
     }
     
     this.drawWires();
+}
+
+propagateAllSignals() {
+    console.log('Propagating all signals...');
+    
+    if (!this.wireSystem) return;
+    
+    // First, update all gates that are directly connected to inputs
+    this.placedComponents.forEach(component => {
+        const connections = component.getData('connections') || {};
+        let hasDirectInput = false;
+        
+        // Check if gate is directly connected to an input control
+        for (const pin in connections) {
+            const conn = connections[pin];
+            if (conn.source && 
+                ((typeof conn.source.component === 'string' && 
+                  (conn.source.component === 'A' || conn.source.component === 'B')) ||
+                 (conn.source.component && conn.source.component.label &&
+                  (conn.source.component.label === 'A' || conn.source.component.label === 'B')))) {
+                hasDirectInput = true;
+                break;
+            }
+        }
+        
+        if (hasDirectInput) {
+            this.wireSystem.updateGateFromInputs(component);
+        }
+    });
+    
+    // Then update wires
+    this.wireSystem.update();
+    
+    // Update output display
+    this.wireSystem.wires.forEach(wire => {
+        if (wire.endPin && wire.endPin.component === 'outputPin') {
+            this.updateOutputDisplay(wire.value);
+        }
+    });
 }
     
     updateWireValue(wire) {

@@ -1043,11 +1043,33 @@ toggleInput(inputName) {
     // Update all placed components with new input values
     this.updateCircuitInputs();
     
-    // Update wire colors
+    // Update wire colors AND propagate signals
     if (this.wireSystem) {
-      this.wireSystem.update();
+        // First update all gates
+        this.placedComponents.forEach(component => {
+            const connections = component.getData('connections') || {};
+            
+            // Check if this component is connected to the toggled input
+            let needsUpdate = false;
+            for (const pin in connections) {
+                const conn = connections[pin];
+                if (conn.source && 
+                    ((typeof conn.source.component === 'string' && conn.source.component === inputName) ||
+                     (conn.source.component && conn.source.component.label === inputName))) {
+                    needsUpdate = true;
+                    break;
+                }
+            }
+            
+            if (needsUpdate) {
+                this.wireSystem.updateGateFromInputs(component);
+            }
+        });
+        
+        // Then update wires
+        this.wireSystem.update();
     }
-  }
+}
 
 updateInputVisuals() {
   // Update A input
@@ -1095,9 +1117,9 @@ updateInputVisuals() {
         this.updateGateOutput(component, gateType);
       }
         // Also update any visual connections/wires
-    if (this.circuitVisuals) {
-            this.circuitVisuals.updateWiresForComponent(component);
-        }
+    // if (this.circuitVisuals) {
+    //         this.circuitVisuals.updateWiresForComponent(component);
+    //     }
     });
     
     console.log(`Circuit updated: A=${this.inputStates.A}, B=${this.inputStates.B}`);
@@ -1297,11 +1319,85 @@ getRequiredGateCount(targetGate) {
   verifyBuiltCircuit(challenge) {
     console.log('Verifying circuit for:', challenge.targetGate);
     
-    const { targetGate, availableGates } = challenge;
+    const { targetGate } = challenge;
 
-    const gateCount = this.placedComponents.length;
+    // Get gate count requirements
     const requirements = this.getRequiredGateCount(targetGate);
+    const gateCount = this.placedComponents.length;
 
+    if (gateCount < requirements.min) {
+        this.checkText.setText(`Premalo vrat. Potrebuješ ${requirements.description}.`);
+        return false;
+    }
+
+    if (gateCount > requirements.max) {
+        this.checkText.setText(`Preveč vrat. Uporabi samo ${requirements.max} vrata.`);
+        return false;
+    }
+    
+    // FOR NOT GATE CHALLENGE (Level 1)
+    if (targetGate === 'not') {
+        // Should have exactly 1 NAND gate
+        if (this.placedComponents.length !== 1) {
+            this.checkText.setText('Uporabi samo 1 NAND vrata za gradnjo NOT.');
+            return false;
+        }
+        
+        const gate = this.placedComponents[0];
+        const gateType = gate.getData('type');
+        
+        if (gateType !== 'nand') {
+            this.checkText.setText('Uporabi NAND vrata za gradnjo NOT.');
+            return false;
+        }
+        
+        // Check connections
+        const connections = gate.getData('connections') || {};
+        
+        // BOTH inputs (A and B) must be connected
+        if (!connections.A || !connections.B) {
+            this.checkText.setText('Za gradnjo NOT vrat moraš povezati OBA vhoda NAND vrat.');
+            return false;
+        }
+        
+        // Check output connection
+        if (!this.checkOutputConnection()) {
+            this.checkText.setText('Izhod ni povezan. Poveži izhod NAND vrat na izhodni pin (desno).');
+            return false;
+        }
+        
+        // TEST FUNCTIONALITY - This is the most important check
+        return this.testNotGateFunctionality();
+    }
+    
+    // For AND gate challenge
+    if (targetGate === 'and') {
+        // Check output connection
+        if (!this.checkOutputConnection()) {
+            this.checkText.setText('Izhod ni povezan. Poveži izhod na izhodni pin (desno).');
+            return false;
+        }
+        
+        // Check if all gates have their inputs connected
+        const allGatesConnected = this.checkAllGatesConnected();
+        if (!allGatesConnected) {
+            this.checkText.setText('Nekatera vrata niso pravilno povezana.');
+            return false;
+        }
+        
+        // Check gate types
+        const gateTypes = this.placedComponents.map(comp => comp.getData('type'));
+        
+        // Should have NAND and NOT gates
+        const hasNand = gateTypes.includes('nand');
+        const hasNot = gateTypes.includes('not');
+        if (!hasNand || !hasNot) {
+            this.checkText.setText('AND potrebuje NAND in NOT vrata.');
+            return false;
+        }
+        
+        return this.testAndGateFunctionality();
+    }
     if (gateCount < requirements.min) {
     this.checkText.setText(`Premalo vrat. Potrebuješ ${requirements.description}.`);
     return false;
@@ -1360,6 +1456,131 @@ getRequiredGateCount(targetGate) {
     return true;
 }
 
+testAndGateFunctionality() {
+    console.log('Testing AND gate functionality...');
+    
+    // Save current states
+    const savedA = this.inputStates.A;
+    const savedB = this.inputStates.B;
+    
+    let passedTests = 0;
+    const totalTests = 4;
+    
+    // Test all 4 input combinations
+    const testCases = [
+        { A: 0, B: 0, expected: 0 },
+        { A: 0, B: 1, expected: 0 },
+        { A: 1, B: 0, expected: 0 },
+        { A: 1, B: 1, expected: 1 }
+    ];
+    
+    const runTest = (index) => {
+        if (index >= testCases.length) {
+            // All tests done
+            console.log(`AND gate test: ${passedTests}/${totalTests} passed`);
+            
+            // Restore original states
+            this.inputStates.A = savedA;
+            this.inputStates.B = savedB;
+            this.updateInputVisuals();
+            this.updateCircuitInputs();
+            
+            if (this.wireSystem) {
+                this.placedComponents.forEach(component => {
+                    this.wireSystem.updateGateFromInputs(component);
+                });
+                this.wireSystem.update();
+            }
+            
+            return passedTests === totalTests;
+        }
+        
+        const testCase = testCases[index];
+        this.inputStates.A = testCase.A;
+        this.inputStates.B = testCase.B;
+        this.updateInputVisuals();
+        this.updateCircuitInputs();
+        
+        if (this.wireSystem) {
+            this.placedComponents.forEach(component => {
+                this.wireSystem.updateGateFromInputs(component);
+            });
+            this.wireSystem.update();
+        }
+        
+        // Wait for signals to propagate
+        this.time.delayedCall(100, () => {
+            if (this.outputState === testCase.expected) {
+                console.log(`Test ${index + 1} PASSED: A=${testCase.A}, B=${testCase.B} -> Output=${this.outputState}`);
+                passedTests++;
+            } else {
+                console.log(`Test ${index + 1} FAILED: A=${testCase.A}, B=${testCase.B} -> Expected ${testCase.expected}, got ${this.outputState}`);
+            }
+            
+            // Run next test
+            runTest(index + 1);
+        });
+    };
+    
+    // Start testing
+    runTest(0);
+    
+    // Return true for now, actual result will be determined in callback
+    return true;
+}
+
+testNotGateFunctionality() {
+    console.log('Testing NOT gate functionality...');
+    
+    let allTestsPassed = true;
+    
+    // Test input 0 -> output 1
+    this.inputStates.A = 0;
+    this.inputStates.B = 0;
+    this.updateInputVisuals();
+    this.propagateAllSignals();
+    
+    // Give time for signals to propagate
+    setTimeout(() => {
+        if (this.outputState !== 1) {
+            console.log(`FAILED: Input 0,0 -> Expected 1, got ${this.outputState}`);
+            allTestsPassed = false;
+        } else {
+            console.log('PASSED: Input 0,0 -> Output 1');
+        }
+        
+        // Test input 1 -> output 0
+        this.inputStates.A = 1;
+        this.inputStates.B = 1;
+        this.updateInputVisuals();
+        this.propagateAllSignals();
+        
+        setTimeout(() => {
+            if (this.outputState !== 0) {
+                console.log(`FAILED: Input 1,1 -> Expected 0, got ${this.outputState}`);
+                allTestsPassed = false;
+            } else {
+                console.log('PASSED: Input 1,1 -> Output 0');
+            }
+            
+            // Reset
+            this.inputStates.A = 0;
+            this.inputStates.B = 0;
+            this.updateInputVisuals();
+            this.propagateAllSignals();
+            
+            console.log(`NOT gate test ${allTestsPassed ? 'PASSED' : 'FAILED'}`);
+            
+            // Update the check text based on result
+            if (!allTestsPassed) {
+                this.checkText.setText('Vezje ne deluje kot NOT vrata. Preveri povezave.');
+            }
+        }, 100);
+    }, 100);
+    
+    return allTestsPassed;
+}
+
 checkOutputConnection() {
     // Check if any wire connects to the output pin
     if (!this.wireSystem || !this.wireSystem.wires) {
@@ -1392,13 +1613,19 @@ checkAllGatesConnected() {
         console.log(`Checking ${gateType} gate connections:`, connections);
         
         if (gateType === 'not') {
-            // NOT gate needs 1 input connection
+            // NOT gate needs ONLY 1 input connection (A)
             if (!connections.A) {
                 console.log(`NOT gate missing input connection`);
                 return false;
             }
+        } else if (gateType === 'nand' && this.currentChallengeIndex === 0) {
+            // For NOT gate challenge (level 1), NAND needs BOTH inputs connected
+            if (!connections.A || !connections.B) {
+                this.checkText.setText('Za NOT vrata poveži OBA vhoda NAND vrat na isti vhodni signal!');
+                return false;
+            }
         } else {
-            // All other gates (nand, and, or, nor, xor) need 2 input connections
+            // All other gates (and, or, nor, xor) need 2 input connections
             if (!connections.A || !connections.B) {
                 console.log(`${gateType} gate missing input connections`);
                 return false;
