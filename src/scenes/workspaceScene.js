@@ -277,13 +277,13 @@ export default class WorkspaceScene extends Phaser.Scene {
 
           this.currentFlowAnim.start(result, this.placedComponents, this.graph);
         } else {
-          this.checkText.setStyle({ color: '#cc0000' });
-          if (result.status === -1) {
-            this.checkText.setText('Manjka ti baterija');
-          } else if (result.status === 0) {
-            this.checkText.setText('Električni tok ni sklenjen');
-          }
-          this.sim = false;
+          // this.checkText.setStyle({ color: '#cc0000' });
+          // if (result.status === -1) {
+          //   this.checkText.setText('Manjka ti baterija');
+          // } else if (result.status === 0) {
+          //   this.checkText.setText('Električni tok ni sklenjen');
+          // }
+          // this.sim = false;
         }
       } else {
         this.checkText.setStyle({ color: '#cc0000' });
