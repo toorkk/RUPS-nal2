@@ -347,7 +347,6 @@ export default class LogicScene extends Phaser.Scene {
     }
   }
 
-  createLogicGateButton(x, y, gateType, label, color) {
   createLogicGateButton(x, y, gateType, label, color, isUnlocked) {
     const button = this.add.container(x, y);
     
@@ -414,37 +413,37 @@ export default class LogicScene extends Phaser.Scene {
     return button;
   }
 
-   createPlaceableGate(gateType, x, y) {
-    // Create a draggable gate container
-    const container = this.add.container(x, y);
+//    createPlaceableGate(gateType, x, y) {
+//     // Create a draggable gate container
+//     const container = this.add.container(x, y);
     
-    // Make it draggable
-    container.setInteractive(new Phaser.Geom.Rectangle(-50, -30, 100, 60), Phaser.Geom.Rectangle.Contains);
-    this.input.setDraggable(container);
+//     // Make it draggable
+//     container.setInteractive(new Phaser.Geom.Rectangle(-50, -30, 100, 60), Phaser.Geom.Rectangle.Contains);
+//     this.input.setDraggable(container);
     
-    // Enable dragging and update position during drag
-    this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
-      if (gameObject === container) {
-        container.setPosition(dragX, dragY);
-  getGateUnlockLevel(gateType) {
-    const gateOrder = ['nand', 'not', 'and', 'or', 'nor', 'xor'];
-    return gateOrder.indexOf(gateType);
-  }
+//     // Enable dragging and update position during drag
+//     this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
+//       if (gameObject === container) {
+//         container.setPosition(dragX, dragY);
+//   getGateUnlockLevel(gateType) {
+//     const gateOrder = ['nand', 'not', 'and', 'or', 'nor', 'xor'];
+//     return gateOrder.indexOf(gateType);
+//   }
 
-  getGateDescription(gateType) {
-    const descriptions = {
-      'nand': 'Osnovna vrata - vedno odklenjena',
-      'not': 'Od NAND narediš NOT tako, da povežeš oba vhoda skupaj',
-      'and': 'Od NAND + NOT narediš AND',
-      'or': 'Od NAND, NOT in AND narediš OR',
-      'nor': 'Od NAND, NOT, AND in OR narediš NOR',
-      'xor': 'Od vseh vrat narediš XOR'
-    };
-    return descriptions[gateType] || '';
-  }
+//   getGateDescription(gateType) {
+//     const descriptions = {
+//       'nand': 'Osnovna vrata - vedno odklenjena',
+//       'not': 'Od NAND narediš NOT tako, da povežeš oba vhoda skupaj',
+//       'and': 'Od NAND + NOT narediš AND',
+//       'or': 'Od NAND, NOT in AND narediš OR',
+//       'nor': 'Od NAND, NOT, AND in OR narediš NOR',
+//       'xor': 'Od vseh vrat narediš XOR'
+//     };
+//     return descriptions[gateType] || '';
+//   }
 
 
-  createPlaceableGate(gateType, x, y) {
+createPlaceableGate(gateType, x, y) {
   // Create a draggable gate container
   const container = this.add.container(x, y);
   
@@ -473,49 +472,23 @@ export default class LogicScene extends Phaser.Scene {
   container.inputStates = { A: 0, B: 0 };
   
   switch(gateType) {
-    case 'not':
-      // Draw NOT gate (triangle with circle)
+    case 'nand':
+      // Draw NAND gate
       graphics.fillStyle(0xffffff, 1);
       graphics.lineStyle(3, 0x000000, 1);
+      graphics.fillRoundedRect(-50, -30, 100, 60, 12);
+      graphics.strokeRoundedRect(-50, -30, 100, 60, 12);
+      graphics.strokeCircle(55, 0, 6);
       
-      // Draw triangle for NOT gate
-      graphics.beginPath();
-      graphics.moveTo(-35, -45);
-      graphics.lineTo(35, 0);
-      graphics.lineTo(-35, 45);
-      graphics.closePath();
-      graphics.fillPath();
-      graphics.strokePath();
-      
-      // Draw small circle at output (NOT gate symbol)
-      graphics.strokeCircle(50, 0, 6);
-      
-      const notLabel = this.add.text(0, 0, 'NOT', {
+      const nandLabel = this.add.text(0, 0, 'NAND', {
         fontSize: '14px',
         color: '#000000',
         fontStyle: 'bold'
       }).setOrigin(0.5);
       
-      container.add([graphics, notLabel]);
+      container.add([graphics, nandLabel]);
       this.addGatePins(container, gateType);
       break;
-      case 'nand':
-        // Draw NAND gate
-        graphics.fillStyle(0xffffff, 1);
-        graphics.lineStyle(3, 0x000000, 1);
-        graphics.fillRoundedRect(-50, -30, 100, 60, 12);
-        graphics.strokeRoundedRect(-50, -30, 100, 60, 12);
-        graphics.strokeCircle(55, 0, 6);
-        
-        const nandLabel = this.add.text(0, 0, 'NAND', {
-          fontSize: '14px',
-          color: '#000000',
-          fontStyle: 'bold'
-        }).setOrigin(0.5);
-        
-        container.add([graphics, nandLabel]);
-        this.addGatePins(container, gateType);
-        break;
       
     case 'nor':
       // Draw NOR gate
@@ -569,10 +542,37 @@ export default class LogicScene extends Phaser.Scene {
       container.add([graphics, xorLabel]);
       this.addGatePins(container, gateType);
       break;
-    case 'and':
-      // Draw AND gate (rounded rectangle without circle)
-      graphics.fillStyle(0xffffff, 1);
+
+    case 'not':
+      // Draw NOT gate
       graphics.lineStyle(3, 0x000000, 1);
+      graphics.fillStyle(0xffffff, 1);
+      
+      // NOT triangle
+      graphics.beginPath();
+      graphics.moveTo(-50, -30);
+      graphics.lineTo(50, 0);
+      graphics.lineTo(-50, 30);
+      graphics.closePath();
+      graphics.fillPath();
+      graphics.strokePath();
+      graphics.strokeCircle(60, 0, 6);
+      
+      const notLabel = this.add.text(0, 0, 'NOT', {
+        fontSize: '14px',
+        color: '#000000',
+        fontStyle: 'bold'
+      }).setOrigin(0.5);
+      
+      container.add([graphics, notLabel]);
+      this.addGatePins(container, gateType);
+      break;
+
+    case 'and':
+      // Draw AND gate
+      graphics.lineStyle(3, 0x000000, 1);
+      graphics.fillStyle(0xffffff, 1);
+      
       graphics.fillRoundedRect(-50, -30, 100, 60, 12);
       graphics.strokeRoundedRect(-50, -30, 100, 60, 12);
       
@@ -586,13 +586,11 @@ export default class LogicScene extends Phaser.Scene {
       this.addGatePins(container, gateType);
       break;
 
-
     case 'or':
-       // Draw OR gate (same as NOR but without circle at output)
+      // Draw OR gate
       graphics.lineStyle(3, 0x000000, 1);
       graphics.fillStyle(0xffffff, 1);
       
-      // Standard OR gate triangle
       graphics.beginPath();
       graphics.moveTo(-35, -45);
       graphics.lineTo(45, 0);
@@ -639,127 +637,14 @@ export default class LogicScene extends Phaser.Scene {
         container.inputStates.B = inputs.B || 0;
         this.updateGateOutput(container, gateType);
       }
-    });
-    
-    // Snap to grid on drag end
-    container.on('dragend', (pointer) => {
-      const snapX = Math.round(pointer.x / this.gridSize) * this.gridSize;
-      const snapY = Math.round(pointer.y / this.gridSize) * this.gridSize;
-      container.setPosition(snapX, snapY);
-    });
-    
-    // Different visuals based on gate type
-    const graphics = this.add.graphics();
-    
-    // Initialize inputStates here
-    container.inputStates = { A: 0, B: 0 };
-    
-    switch(gateType) {
-      case 'nand':
-        // Draw NAND gate
-        graphics.fillStyle(0xffffff, 1);
-        graphics.lineStyle(3, 0x000000, 1);
-        graphics.fillRoundedRect(-50, -30, 100, 60, 12);
-        graphics.strokeRoundedRect(-50, -30, 100, 60, 12);
-        graphics.strokeCircle(55, 0, 6);
-        
-        const nandLabel = this.add.text(0, 0, 'NAND', {
-          fontSize: '14px',
-          color: '#000000',
-          fontStyle: 'bold'
-        }).setOrigin(0.5);
-        
-        container.add([graphics, nandLabel]);
-        this.addGatePins(container, gateType);
-        break;
-        
-      case 'nor':
-        // Draw NOR gate
-        graphics.lineStyle(3, 0x000000, 1);
-        graphics.fillStyle(0xffffff, 1);
-        
-        graphics.beginPath();
-        graphics.moveTo(-35, -45);
-        graphics.lineTo(45, 0);
-        graphics.lineTo(-35, 45);
-        graphics.closePath();
-        graphics.fillPath();
-        graphics.strokePath();
-        graphics.strokeCircle(55, 0, 6);
-        
-        const norLabel = this.add.text(0, 0, 'NOR', {
-          fontSize: '14px',
-          color: '#000000',
-          fontStyle: 'bold'
-        }).setOrigin(0.5);
-        
-        container.add([graphics, norLabel]);
-        this.addGatePins(container, gateType);
-        break;
-        
-      case 'xor':
-        // Draw XOR gate
-        graphics.lineStyle(3, 0x000000, 1);
-        graphics.fillStyle(0xffffff, 1);
-        
-        // XOR curved part
-        graphics.beginPath();
-        graphics.arc(-65, 0, 25, -Math.PI / 2, Math.PI / 2, false);
-        graphics.strokePath();
-        
-        // XOR triangle
-        graphics.beginPath();
-        graphics.moveTo(-35, -45);
-        graphics.lineTo(45, 0);
-        graphics.lineTo(-35, 45);
-        graphics.closePath();
-        graphics.fillPath();
-        graphics.strokePath();
-        
-        const xorLabel = this.add.text(0, 0, 'XOR', {
-          fontSize: '14px',
-          color: '#000000',
-          fontStyle: 'bold'
-        }).setOrigin(0.5);
-        
-        container.add([graphics, xorLabel]);
-        this.addGatePins(container, gateType);
-        break;
     }
-    
-    // Add pin data for wire connections
-    const pins = this.getGatePins(gateType);
-    container.setData('pins', pins);
-    container.setData('type', gateType);
-    container.setData('output', 0); // Initialize output
-    container.setData('connections', {}); // Initialize connections
-    
-    container.setData('logicComponent', {
-      reset: () => {
-        // Reset logic if needed
-        if (container.inputPins) {
-          container.inputPins.forEach(pin => pin.setFillStyle(0x666666));
-        }
-        if (container.outputPin) {
-          container.outputPin.setFillStyle(0x666666);
-        }
-        container.inputStates = { A: 0, B: 0 };
-        container.setData('output', 0);
-        container.setData('connections', {});
-      },
-      updateInputs: (inputs) => {
-        // Update gate inputs if needed
-        if (container.inputStates) {
-          container.inputStates.A = inputs.A || 0;
-          container.inputStates.B = inputs.B || 0;
-          this.updateGateOutput(container, gateType);
-        }
-      }
-    });
-    
-    this.placedComponents.push(container);
-    return container;
-  }
+  });
+  
+  // CRITICAL: Push to placedComponents array so wire system can track it
+  this.placedComponents.push(container);
+  return container;
+}
+
 
   getGatePins(gateType) {
   // Return pin configuration for the gate
@@ -778,200 +663,169 @@ export default class LogicScene extends Phaser.Scene {
 }
 
 addGatePins(container, gateType) {
-  const pinRadius = 8; // Smaller radius for connection circles
-  const connectionRadius = 15; // Interactive area for connection
+  const pinRadius = 8;
+  const connectionRadius = 15;
   
-  // Ensure inputStates exists
   if (!container.inputStates) {
     container.inputStates = { A: 0, B: 0 };
   }
   
-  // Input pins - A
-  const inputACircle = this.add.circle(-65, -12, pinRadius, 0x666666) // Changed from white to gray
-    .setStrokeStyle(2, 0x000000);
-  const inputA = this.add.circle(-65, -12, connectionRadius, 0x000000, 0) // Invisible hit area
-    .setInteractive({ useHandCursor: true });
-  
-  // Store connection point data for wire system
-  inputA.setData({
-    type: 'input',
-    name: 'A',
-    parent: container,
-    signal: () => container.inputStates.A || 0
-  });
-  
-  const labelA = this.add.text(-80, -12, 'A', {
-    fontSize: '14px',
-    color: '#000000'
-  }).setOrigin(0.5);
-  
-  // Input pins - B
-  const inputBCircle = this.add.circle(-65, 12, pinRadius, 0x666666) // Changed from white to gray
-    .setStrokeStyle(2, 0x000000);
-  const inputB = this.add.circle(-65, 12, connectionRadius, 0x000000, 0) // Invisible hit area
-    .setInteractive({ useHandCursor: true });
-  
-  inputB.setData({
-    type: 'input',
-    name: 'B',
-    parent: container,
-    signal: () => container.inputStates.B || 0
-  });
-  
-  const labelB = this.add.text(-80, 12, 'B', {
-    fontSize: '14px',
-    color: '#000000'
-  }).setOrigin(0.5);
-  
-  // Output pin - C
-  const outputCCircle = this.add.circle(75, 0, pinRadius, 0x666666) // Changed from white to gray
-    .setStrokeStyle(2, 0x000000);
-  const outputC = this.add.circle(75, 0, connectionRadius, 0x000000, 0) // Invisible hit area
-    .setInteractive({ useHandCursor: true });
-  
-  outputC.setData({
-    type: 'output',
-    name: 'C',
-    parent: container,
-    signal: () => container.getData('output') || 0
-  });
-  
-  const labelC = this.add.text(92, 0, 'C', {
-    fontSize: '14px',
-    color: '#000000'
-  }).setOrigin(0.5);
-  
-  // Store references for logic and wire system
-  container.inputCircles = { A: inputACircle, B: inputBCircle }; // Store as object for easier access
-  container.outputCircle = outputCCircle;
-  
-  container.inputPins = [inputA, inputB];
-  container.outputPin = outputC;
-  
-  // Store pin references for wire system
-  if (!container.pins) {
-    container.pins = {};
-  }
-  container.pins.A = inputA;
-  container.pins.B = inputB;
-  container.pins.C = outputC;
-  
-  // Store visual circles too
-  container.visualPins = {
-    A: inputACircle,
-    B: inputBCircle,
-    C: outputCCircle
-  };
-
-  // Add hover effects for connection points
-  [inputA, inputB, outputC].forEach(pin => {
-    pin.on('pointerover', () => {
-      const circle = pin === inputA ? inputACircle : 
-                    pin === inputB ? inputBCircle : 
-                    outputCCircle;
-      circle.setStrokeStyle(3, 0xffff00);
-      circle.setScale(1.2);
+  // For NOT gate (single input)
+  if (gateType === 'not') {
+    // Input pin A
+    const inputACircle = this.add.circle(-65, 0, pinRadius, 0x666666)
+      .setStrokeStyle(2, 0x000000);
+    const inputA = this.add.circle(-65, 0, connectionRadius, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
+    
+    inputA.setData({
+      type: 'input',
+      name: 'A',
+      parent: container,
+      signal: () => container.inputStates.A || 0
     });
     
-    pin.on('pointerout', () => {
-      const circle = pin === inputA ? inputACircle : 
-                    pin === inputB ? inputBCircle : 
-                    outputCCircle;
-      circle.setStrokeStyle(2, 0x000000);
-      circle.setScale(1);
-    });
-  });
-
-  container.add([inputACircle, inputA, labelA, inputBCircle, inputB, labelB, outputCCircle, outputC, labelC]);
-  // Input pin(s) - NOT gate only has one input
-  if (gateType === 'not') {
-    // Single input pin for NOT gate
-    const inputA = this.add.circle(-65, 0, pinRadius, 0x666666)
-      .setInteractive({ useHandCursor: true });
     const labelA = this.add.text(-80, 0, 'A', {
       fontSize: '14px',
       color: '#000000'
     }).setOrigin(0.5);
     
-    // Output pin
-    const outputC = this.add.circle(65, 0, pinRadius, 0x666666);
+    // Output pin C
+    const outputCCircle = this.add.circle(65, 0, pinRadius, 0x666666)
+      .setStrokeStyle(2, 0x000000);
+    const outputC = this.add.circle(65, 0, connectionRadius, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
+    
+    outputC.setData({
+      type: 'output',
+      name: 'C',
+      parent: container,
+      signal: () => container.getData('output') || 0
+    });
+    
     const labelC = this.add.text(82, 0, 'C', {
       fontSize: '14px',
       color: '#000000'
     }).setOrigin(0.5);
     
-    // Store references for logic
+    // Store references
+    container.inputCircles = { A: inputACircle };
+    container.outputCircle = outputCCircle;
     container.inputPins = [inputA];
     container.outputPin = outputC;
     
-    // Store pin references for wire system
-    if (!container.pins) {
-      container.pins = {};
-    }
+    if (!container.pins) container.pins = {};
     container.pins.A = inputA;
     container.pins.C = outputC;
     
-    // Toggle input on click
-    inputA.on('pointerdown', (pointer) => {
-      pointer.event.stopPropagation();
-      container.inputStates.A = container.inputStates.A ? 0 : 1;
-      inputA.setFillStyle(container.inputStates.A ? 0x00aa00 : 0x666666);
-      this.updateGateOutput(container, gateType);
+    container.visualPins = {
+      A: inputACircle,
+      C: outputCCircle
+    };
+    
+    container.add([inputACircle, inputA, labelA, outputCCircle, outputC, labelC]);
+    
+  } else {
+    // For all other gates (two inputs)
+    // Input pin A
+    const inputACircle = this.add.circle(-65, -12, pinRadius, 0x666666)
+      .setStrokeStyle(2, 0x000000);
+    const inputA = this.add.circle(-65, -12, connectionRadius, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
+    
+    inputA.setData({
+      type: 'input',
+      name: 'A',
+      parent: container,
+      signal: () => container.inputStates.A || 0
     });
     
-    container.add([inputA, labelA, outputC, labelC]);
-  } else {
-    // For other gates (NAND, NOR, XOR) - two inputs
-    const inputA = this.add.circle(-65, -12, pinRadius, 0x666666)
-      .setInteractive({ useHandCursor: true });
     const labelA = this.add.text(-80, -12, 'A', {
       fontSize: '14px',
       color: '#000000'
     }).setOrigin(0.5);
     
-    const inputB = this.add.circle(-65, 12, pinRadius, 0x666666)
+    // Input pin B
+    const inputBCircle = this.add.circle(-65, 12, pinRadius, 0x666666)
+      .setStrokeStyle(2, 0x000000);
+    const inputB = this.add.circle(-65, 12, connectionRadius, 0x000000, 0)
       .setInteractive({ useHandCursor: true });
+    
+    inputB.setData({
+      type: 'input',
+      name: 'B',
+      parent: container,
+      signal: () => container.inputStates.B || 0
+    });
+    
     const labelB = this.add.text(-80, 12, 'B', {
       fontSize: '14px',
       color: '#000000'
     }).setOrigin(0.5);
     
-    // Output pin
-    const outputC = this.add.circle(75, 0, pinRadius, 0x666666);
+    // Output pin C
+    const outputCCircle = this.add.circle(75, 0, pinRadius, 0x666666)
+      .setStrokeStyle(2, 0x000000);
+    const outputC = this.add.circle(75, 0, connectionRadius, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
+    
+    outputC.setData({
+      type: 'output',
+      name: 'C',
+      parent: container,
+      signal: () => container.getData('output') || 0
+    });
+    
     const labelC = this.add.text(92, 0, 'C', {
       fontSize: '14px',
       color: '#000000'
     }).setOrigin(0.5);
     
-    // Store references for logic
+    // Store references
+    container.inputCircles = { A: inputACircle, B: inputBCircle };
+    container.outputCircle = outputCCircle;
     container.inputPins = [inputA, inputB];
     container.outputPin = outputC;
     
-    // Store pin references for wire system
-    if (!container.pins) {
-      container.pins = {};
-    }
+    if (!container.pins) container.pins = {};
     container.pins.A = inputA;
     container.pins.B = inputB;
     container.pins.C = outputC;
     
-    // Toggle input on click
-    inputA.on('pointerdown', (pointer) => {
-      pointer.event.stopPropagation();
-      container.inputStates.A = container.inputStates.A ? 0 : 1;
-      inputA.setFillStyle(container.inputStates.A ? 0x00aa00 : 0x666666);
-      this.updateGateOutput(container, gateType);
-    });
+    container.visualPins = {
+      A: inputACircle,
+      B: inputBCircle,
+      C: outputCCircle
+    };
     
-    inputB.on('pointerdown', (pointer) => {
-      pointer.event.stopPropagation();
-      container.inputStates.B = container.inputStates.B ? 0 : 1;
-      inputB.setFillStyle(container.inputStates.B ? 0x00aa00 : 0x666666);
-      this.updateGateOutput(container, gateType);
-    });
-    
-    container.add([inputA, labelA, inputB, labelB, outputC, labelC]);
+    container.add([inputACircle, inputA, labelA, inputBCircle, inputB, labelB, 
+                   outputCCircle, outputC, labelC]);
   }
+  
+  // Add hover effects
+  const allInteractivePins = gateType === 'not' ? 
+    [container.pins.A, container.pins.C] : 
+    [container.pins.A, container.pins.B, container.pins.C];
+    
+  allInteractivePins.forEach(pin => {
+    if (pin) {
+      pin.on('pointerover', () => {
+        const visualPin = container.visualPins[pin.getData('name')];
+        if (visualPin) {
+          visualPin.setStrokeStyle(3, 0xffff00);
+          visualPin.setScale(1.2);
+        }
+      });
+      
+      pin.on('pointerout', () => {
+        const visualPin = container.visualPins[pin.getData('name')];
+        if (visualPin) {
+          visualPin.setStrokeStyle(2, 0x000000);
+          visualPin.setScale(1);
+        }
+      });
+    }
+  });
 }
 
 
