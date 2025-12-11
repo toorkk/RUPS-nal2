@@ -118,7 +118,8 @@ export default class LevelScene extends Phaser.Scene {
                     });
             }
         }
-        const logicLevels = 6;
+        const logicLevels = 5;
+        const gateNames = ['NOT', 'AND', 'OR', 'NOR', 'XOR'];
 
         // Create logic level buttons
         for (let i = 0; i < logicLevels; i++) {
@@ -148,9 +149,9 @@ export default class LevelScene extends Phaser.Scene {
         ).setStrokeStyle(isCurrentlySelected ? 4 : 2, isCurrentlySelected ? 0xFFEB3B : 0xffffff);
         
         const gateNames = ['NOT', 'AND', 'OR', 'NOR', 'XOR']; // Keep 5 names for backward compatibility
-        const labelText = unlocked 
-            ? `${i === 0 ? 'NAND + NOT' : gateNames[i-1] || `Level ${i+1}`}${isCurrentlySelected ? ' ✓' : ''}` 
-            : `🔒 ${i === 0 ? 'NOT' : gateNames[i-1] || `Level ${i+1}`}`;
+         const labelText = unlocked 
+            ? `${gateNames[i] || `Level ${i+1}`}${isCurrentlySelected ? ' ✓' : ''}` 
+            : `🔒 ${gateNames[i] || `Level ${i+1}`}`;
             const txt = this.add.text(
                 xPos, 
                 yPos,
