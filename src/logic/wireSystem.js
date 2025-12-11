@@ -246,88 +246,102 @@ export class WireSystem {
     }
     
     updateGateFromInputs(component) {
-        // Prevent recursive updates
-        if (this.updateInProgress) {
-            return;
-        }
-        
-        this.updateInProgress = true;
-        
-        try {
-            const connections = component.getData('connections') || {};
-            const gateType = component.getData('type');
-            
-            let inputA = 0, inputB = 0;
-            
-            if (connections.A) {
-                inputA = this.getPinValue(connections.A.source);
-                // Update the A input pin color
-                const inputACircle = component.visualPins && component.visualPins.A;
-                if (inputACircle && inputACircle.setFillStyle) {
-                    const color = inputA ? this.wireColors.high : this.wireColors.low;
-                    inputACircle.setFillStyle(color);
-                }
-            }
-            
-            if (connections.B) {
-                inputB = this.getPinValue(connections.B.source);
-                // Update the B input pin color
-                const inputBCircle = component.visualPins && component.visualPins.B;
-                if (inputBCircle && inputBCircle.setFillStyle) {
-                    const color = inputB ? this.wireColors.high : this.wireColors.low;
-                    inputBCircle.setFillStyle(color);
-                }
-            }
-            
-            // Store input states on the component
-            component.inputStates = { A: inputA, B: inputB };
-            
-            // Calculate output based on gate type
-            let output;
-            switch(gateType) {
-                case 'nand':
-                    output = !(inputA && inputB) ? 1 : 0;
-                    break;
-                case 'nor':
-                    output = !(inputA || inputB) ? 1 : 0;
-                    break;
-                case 'xor':
-                    output = (inputA !== inputB) ? 1 : 0;
-                    break;
-                default:
-                    output = 0;
-            }
-            
-            // Store the previous output value
-            const previousOutput = component.getData('output') || 0;
-            
-            // Only update if the output changed
-            if (output !== previousOutput) {
-                // Update output pin
-                const outputPin = component.pins && component.pins.C;
-                const outputVisual = component.visualPins && component.visualPins.C;
-                
-                if (outputVisual && outputVisual.setFillStyle) {
-                    const color = output ? this.wireColors.high : this.wireColors.low;
-                    outputVisual.setFillStyle(color);
-                }
-                
-                if (outputPin) {
-                    component.setData('output', output);
-                    
-                    // Update all wires connected to this component's output
-                    // Use setTimeout to break the call stack
-                    setTimeout(() => {
-                        this.updateWiresForComponent(component);
-                    }, 0);
-                }
-            }
-        } finally {
-            this.updateInProgress = false;
-        }
+    // Prevent recursive updates
+    if (this.updateInProgress) {
+        return;
     }
     
-    updateWiresForComponent(component) {
+    this.updateInProgress = true;
+    
+    try {
+        const connections = component.getData('connections') || {};
+        const gateType = component.getData('type');
+        
+        let inputA = 0, inputB = 0;
+        
+        if (connections.A) {
+            inputA = this.getPinValue(connections.A.source);
+            // Update the A input pin color
+            const inputACircle = component.visualPins && component.visualPins.A;
+            if (inputACircle && inputACircle.setFillStyle) {
+                const color = inputA ? this.wireColors.high : this.wireColors.low;
+                inputACircle.setFillStyle(color);
+            }
+        }
+        
+        // Only get input B for gates that have two inputs (not NOT gate)
+        if (gateType !== 'not' && connections.B) {
+            inputB = this.getPinValue(connections.B.source);
+            // Update the B input pin color
+            const inputBCircle = component.visualPins && component.visualPins.B;
+            if (inputBCircle && inputBCircle.setFillStyle) {
+                const color = inputB ? this.wireColors.high : this.wireColors.low;
+                inputBCircle.setFillStyle(color);
+            }
+        }
+        
+        // Store input states on the component
+        if (gateType === 'not') {
+            component.inputStates = { A: inputA, B: 0 }; // NOT gate only has A input
+        } else {
+            component.inputStates = { A: inputA, B: inputB };
+        }
+        
+        // Calculate output based on gate type
+        let output;
+        switch(gateType) {
+            case 'nand':
+                output = !(inputA && inputB) ? 1 : 0;
+                break;
+            case 'nor':
+                output = !(inputA || inputB) ? 1 : 0;
+                break;
+            case 'xor':
+                output = (inputA !== inputB) ? 1 : 0;
+                break;
+            case 'not':
+                output = inputA === 0 ? 1 : 0; // Invert the input
+                break;
+            case 'and':
+                output = (inputA && inputB) ? 1 : 0;
+                break;
+            case 'or':
+                output = (inputA || inputB) ? 1 : 0;
+                break;
+            default:
+                output = 0;
+        }
+        
+        // Store the previous output value
+        const previousOutput = component.getData('output') || 0;
+        
+        // Only update if the output changed
+        if (output !== previousOutput) {
+            // Update output pin
+            const outputPin = component.pins && component.pins.C;
+            const outputVisual = component.visualPins && component.visualPins.C;
+            
+            if (outputVisual && outputVisual.setFillStyle) {
+                const color = output ? this.wireColors.high : this.wireColors.low;
+                outputVisual.setFillStyle(color);
+            }
+            
+            if (outputPin) {
+                component.setData('output', output);
+                
+                // Update all wires connected to this component's output
+                // Use setTimeout to break the call stack
+                setTimeout(() => {
+                    this.updateWiresForComponent(component);
+                }, 0);
+            }
+        }
+    } finally {
+        this.updateInProgress = false;
+    }
+}
+    
+updateWiresForComponent(component) {
     const outputValue = component.getData('output') || 0;
     
     // Find all wires connected to this component's output

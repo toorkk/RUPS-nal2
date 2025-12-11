@@ -1101,7 +1101,12 @@ updateInputVisuals() {
     });
     
     console.log(`Circuit updated: A=${this.inputStates.A}, B=${this.inputStates.B}`);
-    };
+    }
+
+
+
+
+
  updateInputs(inputs) {
     // Update gate state based on inputs
     this.inputA = inputs.A;
@@ -1133,78 +1138,294 @@ updateVisualState() {
     }
 
     if (currentChallenge.challengeType === 'build') {
-      const isCorrect = this.verifyBuiltCircuit(currentChallenge);
-      
-      if (isCorrect) {
-        this.checkText.setStyle({ color: '#00aa00' });
-        this.checkText.setText('Pravilno! Odklenjen naslednji nivo.');
+        console.log('Starting simple circuit verification...');
         
-        // Unlock next gate if available
-        this.unlockNextGate();
+        // Show checking message
+        this.checkText.setStyle({ color: '#ffff00' });
+        this.checkText.setText('Preverjam vezje...');
         
-        // Save progress
-        this.saveProgress();
-        
-        // Add points
-        this.addPoints(10);
-        
-        // Show theory with next level button
-        if (currentChallenge.theory) {
-          this.showTheory(currentChallenge.theory);
-        }
-      } else {
-        this.checkText.setStyle({ color: '#cc0000' });
-        this.checkText.setText('Nepravilno. Poskusi znova.');
-      }
+        // Give a small delay for visual feedback
+        this.time.delayedCall(500, () => {
+            const isCorrect = this.verifyBuiltCircuit(currentChallenge);
+            
+            if (isCorrect) {
+                this.checkText.setStyle({ color: '#00aa00' });
+                this.checkText.setText('Pravilno! Vezje je pravilno sestavljeno.');
+                
+                // Add some celebratory effects
+                this.addCelebrationEffects();
+                
+                // Unlock next gate if available
+                this.unlockNextGate();
+                
+                // Save progress
+                this.saveProgress();
+                
+                // Add points
+                this.addPoints(10);
+                
+                // Check if there's a next level
+                const nextLevelIndex = this.currentChallengeIndex + 1;
+                const hasNextLevel = nextLevelIndex < this.logicChallenges.length;
+                
+                // Show theory with next level button
+                if (currentChallenge.theory) {
+                    // Delay theory popup so user sees success message first
+                    this.time.delayedCall(1000, () => {
+                        this.showTheory(currentChallenge.theory);
+                    });
+                } else if (hasNextLevel) {
+                    // Auto-advance after delay
+                    this.time.delayedCall(2000, () => {
+                        this.goToNextLevel(nextLevelIndex);
+                    });
+                } else {
+                    // Last level completed
+                    this.time.delayedCall(2000, () => {
+                        this.checkText.setText('Čestitke! Zaključil si vse logične izzive!');
+                        
+                        // Optionally go back to level selection
+                        this.time.delayedCall(3000, () => {
+                            this.scene.start('LevelScene');
+                        });
+                    });
+                }
+            } else {
+                // Error message already set by verifyBuiltCircuit
+                this.checkText.setStyle({ color: '#cc0000' });
+                // Add some error highlighting
+                this.highlightErrors();
+            }
+        });
     } else {
-      // Original exploration mode
-      this.checkText.setStyle({ color: '#00aa00' });
-      this.checkText.setText('Pravilno! Preuči delovanje vrat.');
-      this.addPoints(5);
-      
-      if (currentChallenge.theory) {
-        this.showTheory(currentChallenge.theory);
-      }
+        // Original exploration mode
+        this.checkText.setStyle({ color: '#00aa00' });
+        this.checkText.setText('Pravilno! Preuči delovanje vrat.');
+        this.addPoints(5);
+        
+        if (currentChallenge.theory) {
+            this.showTheory(currentChallenge.theory);
+        }
     }
-  }
+}
+
+addCelebrationEffects() {
+    // Add some particle effects or animations for success
+    const { width, height } = this.cameras.main;
+    
+    // Create success particles
+    for (let i = 0; i < 20; i++) {
+        const x = Phaser.Math.Between(100, width - 100);
+        const y = Phaser.Math.Between(100, height - 100);
+        
+        const particle = this.add.circle(x, y, 5, 0x00ff00);
+        
+        this.tweens.add({
+            targets: particle,
+            y: y - 100,
+            alpha: 0,
+            duration: 1000,
+            ease: 'Power2',
+            onComplete: () => particle.destroy()
+        });
+    }
+    
+    // Flash the output pin green
+    if (this.outputPinContainer) {
+        this.tweens.add({
+            targets: this.outputPinContainer,
+            scaleX: 1.2,
+            scaleY: 1.2,
+            duration: 300,
+            yoyo: true,
+            repeat: 3
+        });
+    }
+}
+
+highlightErrors() {
+    // Highlight gates with missing connections
+    for (const component of this.placedComponents) {
+        const gateType = component.getData('type');
+        const connections = component.getData('connections') || {};
+        
+        let hasError = false;
+        
+        if (gateType === 'not') {
+            hasError = !connections.A;
+        } else {
+            hasError = !connections.A || !connections.B;
+        }
+        
+        if (hasError) {
+            // Flash the gate red
+            this.tweens.add({
+                targets: component,
+                alpha: 0.5,
+                duration: 300,
+                yoyo: true,
+                repeat: 2
+            });
+        }
+    }
+    
+    // Highlight output pin if not connected
+    if (!this.checkOutputConnection() && this.outputPinContainer) {
+        this.tweens.add({
+            targets: this.outputPinContainer,
+            tint: 0xff0000,
+            duration: 300,
+            yoyo: true,
+            repeat: 2
+        });
+    }
+}
+
+getRequiredGateCount(targetGate) {
+    // Simple minimum gate counts for each challenge
+    const requirements = {
+        'not': { min: 1, max: 1, description: '1 NAND vrata' },
+        'and': { min: 2, max: 2, description: 'NAND + NOT' },
+        'or': { min: 3, max: 5, description: 'NAND, NOT, AND' },
+        'nor': { min: 2, max: 4, description: 'OR + NOT' },
+        'xor': { min: 4, max: 8, description: 'Več vrat' }
+    };
+    
+    return requirements[targetGate] || { min: 1, max: 10 };
+}
 
   verifyBuiltCircuit(challenge) {
-    // This is a simplified check - you'll need to implement proper circuit verification
-    // based on your wire system and component connections
+    console.log('Verifying circuit for:', challenge.targetGate);
     
-    const { targetGate, truthTable } = challenge;
+    const { targetGate, availableGates } = challenge;
+
+    const gateCount = this.placedComponents.length;
+    const requirements = this.getRequiredGateCount(targetGate);
+
+    if (gateCount < requirements.min) {
+    this.checkText.setText(`Premalo vrat. Potrebuješ ${requirements.description}.`);
+    return false;
+    }
+
+    if (gateCount > requirements.max) {
+        this.checkText.setText(`Preveč vrat. Uporabi samo ${requirements.max} vrata.`);
+        return false;
+    }
     
-    // Check if the circuit produces correct outputs for all input combinations
-    // This is a complex function that would need to simulate the circuit
+    // SIMPLE CHECK 1: Are there any gates placed?
+    if (this.placedComponents.length === 0) {
+        this.checkText.setText('Dodaj vsaj ena logična vrata.');
+        return false;
+    }
     
-    // For now, return true as a placeholder
-    // You'll need to implement actual circuit simulation
+    // SIMPLE CHECK 2: Check output connection
+    if (!this.checkOutputConnection()) {
+        this.checkText.setText('Izhod ni povezan. Poveži izhod na izhodni pin (desno).');
+        return false;
+    }
+    
+    // SIMPLE CHECK 3: Check if all gates have their inputs connected
+    const allGatesConnected = this.checkAllGatesConnected();
+    if (!allGatesConnected) {
+        this.checkText.setText('Nekatera vrata niso pravilno povezana.');
+        return false;
+    }
+    
+    // SIMPLE CHECK 4: Check gate types (optional - for basic validation)
+    const gateTypes = this.placedComponents.map(comp => comp.getData('type'));
+    console.log('Placed gate types:', gateTypes);
+    
+    // For NOT gate challenge (first level)
+    if (targetGate === 'not') {
+        // Should have at least 1 NAND gate
+        const hasNand = gateTypes.includes('nand');
+        if (!hasNand) {
+            this.checkText.setText('Uporabi NAND vrata za gradnjo NOT.');
+            return false;
+        }
+    }
+    
+    // For AND gate challenge (second level)
+    if (targetGate === 'and') {
+        // Should have at least NAND and NOT gates
+        const hasNand = gateTypes.includes('nand');
+        const hasNot = gateTypes.includes('not');
+        if (!hasNand || !hasNot) {
+            this.checkText.setText('AND potrebuje NAND in NOT vrata.');
+            return false;
+        }
+    }
+    
+    // If we get here, the circuit structure looks good
     return true;
-  }
+}
+
+checkOutputConnection() {
+    // Check if any wire connects to the output pin
+    if (!this.wireSystem || !this.wireSystem.wires) {
+        console.log('No wire system or wires found');
+        return false;
+    }
+    
+    for (const wire of this.wireSystem.wires) {
+        const startComp = wire.startPin?.component;
+        const endComp = wire.endPin?.component;
+        
+        console.log('Checking wire:', { startComp, endComp });
+        
+        if (startComp === 'outputPin' || endComp === 'outputPin') {
+            console.log('Output connection found!');
+            return true;
+        }
+    }
+    
+    console.log('No output connection found');
+    return false;
+}
+
+checkAllGatesConnected() {
+    // Simple check: ensure all gates have their pins connected
+    for (const component of this.placedComponents) {
+        const gateType = component.getData('type');
+        const connections = component.getData('connections') || {};
+        
+        console.log(`Checking ${gateType} gate connections:`, connections);
+        
+        if (gateType === 'not') {
+            // NOT gate needs 1 input connection
+            if (!connections.A) {
+                console.log(`NOT gate missing input connection`);
+                return false;
+            }
+        } else {
+            // All other gates (nand, and, or, nor, xor) need 2 input connections
+            if (!connections.A || !connections.B) {
+                console.log(`${gateType} gate missing input connections`);
+                return false;
+            }
+        }
+    }
+    
+    console.log('All gates have connections');
+    return true;
+}
 
   unlockNextGate() {
     const gateOrder = ['nand', 'not', 'and', 'or', 'nor', 'xor'];
     const nextIndex = this.currentChallengeIndex + 1;
     
     if (nextIndex < gateOrder.length) {
-      const nextGate = gateOrder[nextIndex];
-      if (!this.unlockedGates.includes(nextGate)) {
-        this.unlockedGates.push(nextGate);
-        localStorage.setItem('unlockedLogicGates', JSON.stringify(this.unlockedGates));
-        
-        // Update highest level reached
-        const highestLevel = localStorage.getItem('highestLogicChallengeIndex');
-        if (!highestLevel || nextIndex > parseInt(highestLevel)) {
-          localStorage.setItem('highestLogicChallengeIndex', nextIndex.toString());
+        const nextGate = gateOrder[nextIndex];
+        if (!this.unlockedGates.includes(nextGate)) {
+            this.unlockedGates.push(nextGate);
+            localStorage.setItem('unlockedLogicGates', JSON.stringify(this.unlockedGates));
+            
+            console.log(`Unlocked ${nextGate} gate!`);
         }
-        
-        // Refresh the scene to show newly unlocked gate
-        this.time.delayedCall(1000, () => {
-          this.scene.restart();
-        });
-      }
+    } else {
+        console.log('All gates unlocked!');
     }
-  }
+}
 
   saveProgress() {
     // Save current challenge index
@@ -1249,7 +1470,7 @@ updateVisualState() {
     const hasNextLevel = nextLevelIndex < this.logicChallenges.length;
     
     // Create appropriate button
-    const buttonLabel = hasNextLevel ? 'Naslednji level' : 'Zapri';
+    const buttonLabel = hasNextLevel ? 'Naslednji level' : 'Nazaj na izbiro levelov';
     const buttonColor = hasNextLevel ? '#00cc00' : '#ff4444';
     const hoverColor = hasNextLevel ? '#009900' : '#cc0000';
     
@@ -1266,32 +1487,61 @@ updateVisualState() {
       .on('pointerout', () => this.continueButton.setStyle({ color: buttonColor }))
       .on('pointerdown', () => {
         if (hasNextLevel) {
-          this.goToNextLevel();
+          this.goToNextLevel(nextLevelIndex);
         } else {
           this.hideTheory();
+          // Go back to level selection
+          this.time.delayedCall(500, () => {
+            this.scene.start('LevelScene');
+          });
         }
       });
   }
 
-  goToNextLevel() {
-    const nextLevelIndex = this.currentChallengeIndex + 1;
-    
-    if (nextLevelIndex < this.logicChallenges.length) {
-      // Update current level
-      this.currentChallengeIndex = nextLevelIndex;
-      localStorage.setItem('currentLogicChallengeIndex', nextLevelIndex.toString());
-      
-      // Update highest level reached if needed
-      const highestLevel = localStorage.getItem('highestLogicChallengeIndex');
-      if (!highestLevel || nextLevelIndex > parseInt(highestLevel)) {
-        localStorage.setItem('highestLogicChallengeIndex', nextLevelIndex.toString());
-      }
-      
-      // Hide theory and restart scene
-      this.hideTheory();
-      this.scene.restart();
+  hideTheory() {
+    if (this.theoryBack) {
+        this.theoryBack.destroy();
+        this.theoryBack = null;
     }
-  }
+    if (this.theoryText) {
+        this.theoryText.destroy();
+        this.theoryText = null;
+    }
+    if (this.continueButton) {
+        this.continueButton.destroy();
+        this.continueButton = null;
+    }
+}
+
+  goToNextLevel(nextLevelIndex) {
+    console.log('Going to next level:', nextLevelIndex);
+    
+    // Update current level
+    this.currentChallengeIndex = nextLevelIndex;
+    
+    // Save to localStorage
+    localStorage.setItem('currentLogicChallengeIndex', nextLevelIndex.toString());
+    
+    // Update highest level reached if needed
+    const highestLevel = localStorage.getItem('highestLogicChallengeIndex');
+    if (!highestLevel || nextLevelIndex > parseInt(highestLevel)) {
+        localStorage.setItem('highestLogicChallengeIndex', nextLevelIndex.toString());
+    }
+    
+    // Hide theory first
+    this.hideTheory();
+    
+    // Add a small delay for smooth transition
+    this.time.delayedCall(300, () => {
+        // Fade out
+        this.cameras.main.fadeOut(300, 0, 0, 0);
+        
+        this.time.delayedCall(300, () => {
+            // Restart the scene with the new level
+            this.scene.restart();
+        });
+    });
+}
 
 resetCircuit() {
     // Reset visual effects
