@@ -76,50 +76,74 @@ export default class WorkspaceScene extends Phaser.Scene {
     this.infoWindow.add([infoBox, infoText]);
     this.infoText = infoText;
 
-    this.createCircuitInfoPanel();
-
     this.currentFlowParticles = [];
 
+    // V razredu WorkspaceScene zamenjaj circuitChallenges array:
     this.circuitChallenges = [
       {
-        prompt: 'Sestavi preprosti električni krog z baterijo in svetilko.',
+        prompt: 'Poveži baterijo s svetilko, da bo prižgana',
+        requiredComponents: ['baterija', 'svetilka', 'žica', 'žica'],
+        theory: ['Električni tok teče samo po sklenjeni poti od pozitivnega pola baterije do svetilke in nazaj k negativnemu polu. To je osnovni električni krog.'],
+        hints: ['Baterija je vir napetosti', 'Svetilka porablja energijo', 'Potrebuješ najmanj dve žici za zaprtje kroga']
+      },
+      {
+        prompt: 'Dodaj stikalo za vklop/izklop svetilke',
+        requiredComponents: ['baterija', 'svetilka', 'stikalo', 'žica', 'žica', 'žica'],
+        theory: ['Stikalo omogoča nadzor nad tokom. Ko je stikalo zaprto, tok teče in svetilka sveti. Ko je odprto, tok ne more teči in svetilka ugasne.'],
+        hints: ['Stikalo mora biti v poti toka', 'Klikni na stikalo, da ga preklopiš', 'Preveri, ali je stikalo zaprto']
+      },
+      {
+        prompt: 'Uporabi upor, da bo svetilka manj svetla',
+        requiredComponents: ['baterija', 'svetilka', 'upor', 'žica', 'žica', 'žica'],
+        theory: ['Upor omejuje električni tok. Po Ohmovem zakonu: I = U/R. Večji upor pomeni manjši tok, zato je svetilka manj svetla.'],
+        hints: ['Upor postavi v serijo s svetilko', 'Svetilka mora še vedno svetiti', 'Poskusi z različnimi pozicijami upora']
+      },
+      {
+        prompt: 'Poveži dve svetilki zaporedno',
+        requiredComponents: ['baterija', 'svetilka', 'svetilka', 'žica', 'žica', 'žica', 'žica'],
+        theory: ['Pri zaporedni vezavi teče isti tok skozi obe svetilki. Napetost baterije se porazdeli med svetilkama, zato sta obe manj svetli kot če bi bila sama.'],
+        hints: ['Tok mora teči skozi prvo IN nato skozi drugo svetilko', 'Obe svetilki morata svetiti', 'Poskusi z različnimi povezavami']
+      },
+      {
+        prompt: 'Poveži dve svetilki vzporedno',
+        requiredComponents: ['baterija', 'svetilka', 'svetilka', 'žica', 'žica', 'žica', 'žica', 'žica'],
+        theory: ['Pri vzporedni vezavi ima vsaka svetilka celotno napetost baterije. Tok se deli med svetilkama, zato sta obe polno svetli.'],
+        hints: ['Obe svetilki morata biti neposredno povezani z baterijo', 'Uporabi več žic', 'Poskusi z različnimi potmi']
+      },
+      {
+        prompt: 'Izmeri napetost na svetilki, ko sveti',
+        requiredComponents: ['baterija', 'svetilka', 'voltmeter', 'žica', 'žica', 'žica'],
+        theory: ['Voltmetri se priključujejo VZPOREDNO z elementom, katerega napetost želimo izmeriti. Voltmetri imajo zelo visok upor, da ne vplivajo na krog.'],
+        hints: ['Voltmeter poveži vzporedno s svetilko', 'Rdeča priključek na pozitivno stran', 'Črna priključek na negativno stran'],
+        checkVoltmeter: true
+      },
+      {
+        prompt: 'Izmeri tok skozi svetilko',
+        requiredComponents: ['baterija', 'svetilka', 'ampermeter', 'žica', 'žica', 'žica'],
+        theory: ['Ampermetri se priključujejo ZAPOREDNO v krog, da merijo tok. Imajo zelo nizek upor, da ne vplivajo na tok v krogu.'],
+        hints: ['Ampermeter mora biti v poti toka', 'Tok mora teči skozi ampermeter', 'Pazi na smer povezave'],
+        checkAmmeter: true
+      },
+      {
+        prompt: 'Naj dva upora delita 9V napetosti - to preveri z voltmetrom',
+        requiredComponents: ['baterija', 'upor', 'upor', 'voltmeter', 'žica', 'žica', 'žica', 'žica'],
+        theory: ['Pri zaporedni vezavi uporov se napetost deli sorazmerno z upornostjo. Vsota napetosti na uporih je enaka napetosti baterije.'],
+        hints: ['Poveži upora zaporedno', 'Voltmetrom izmeri napetost na vsakem uporu', 'Vsota mora biti približno 9V'],
+        checkVoltageDivision: true
+      },
+      {
+        prompt: 'Kaj se zgodi, če povežeš žico čez svetilko?',
         requiredComponents: ['baterija', 'svetilka', 'žica', 'žica', 'žica', 'žica'],
-        theory: ['Osnovni električni krog potrebuje vir, to je v našem primeru baterija. Potrebuje tudi porabnike, to je svetilka. Električni krog je v našem primeru sklenjen, kar je nujno potrebno, da električni tok teče preko prevodnikov oziroma žic.']
+        theory: ['Kratek stik nastane, ko nizkouporna povezava (žica) obide uporovni element. Tok teče po lažji poti, svetilka ugasne, baterija se hitro izprazni. To je lahko nevarno!'],
+        hints: ['Dodaj žico vzporedno s svetilko', 'Opazuj, kaj se zgodi s svetilko', 'Preveri tok z ampermetrom'],
+        allowShortCircuit: true
       },
       {
-        prompt: 'Sestavi preprosti nesklenjeni električni krog z baterijo, svetilko in stikalom.',
-        requiredComponents: ['baterija', 'svetilka', 'žica', 'stikalo'],
-        theory: ['V nesklenjenem krogu je stikalo odprto, kar pomeni, da je električni tok prekinjen. Svetilka posledično zato ne sveti.']
-      },
-      {
-        prompt: 'Sestavi preprosti sklenjeni električni krog z baterijo, svetilka in stikalom.',
-        requiredComponents: ['baterija', 'svetilka', 'žica', 'stikalo'],
-        theory: ['V sklenjenem krogu je stikalo zaprto, kar pomeni, da lahko električni tok teče neovirano.']
-      },
-      {
-        prompt: 'Sestavi električni krog z baterijo, svetilko in stikalom, ki ga lahko ugašaš in prižigaš.',
-        requiredComponents: ['baterija', 'svetilka', 'žica', 'stikalo', 'stikalo'],
-        theory: ['Stikalo nam omogoča nadzor nad pretokom električnega toka. Ko je stikalo zaprto, tok teče in posledično svetilka sveti. Kadar pa je stikalo odprto, tok ne teče in se svetilka ugasne.']
-      },
-      {
-        prompt: 'Sestavi krog z dvema baterijama in svetilko.',
-        requiredComponents: ['baterija', 'baterija', 'svetilka', 'žica'],
-        theory: ['Kadar vežemo dve ali več baterij zaporedno, se napetosti seštevajo. Večja je napetost, večji je električni tok.']
-      },
-      {
-        prompt: 'V električni krog zaporedno poveži dve svetilki, ki ju priključiš na baterijo.',
-        requiredComponents: ['baterija', 'svetilka', 'svetilka', 'žica'],
-        theory: ['V zaporedni vezavi teče isti električni tok skozi vse svetilke. Napetost baterije se porazdeli.']
-      },
-      {
-        prompt: 'V električni krog vzporedno poveži dve svetilki, ki ju priključiš na baterijo.',
-        requiredComponents: ['baterija', 'svetilka', 'svetilka', 'žica'],
-        theory: ['V vzporedni vezavi ima vsaka svetilka enako napetost kot baterija. Električni tok se porazdeli med svetilkama.']
-      },
-      {
-        prompt: 'Sestavi električni krog s svetilko in uporom.',
-        requiredComponents: ['baterija', 'svetilka', 'žica', 'upor'],
-        theory: ['Upor omejuje tok v krogu. Večji kot je upor, manjši je tok. Spoznajmo Ohmov zakon: tok (I) = napetost (U) / upornost (R).']
+        prompt: 'Izmeri napetost IN tok v delujočem krogu',
+        requiredComponents: ['baterija', 'svetilka', 'voltmeter', 'ampermeter', 'žica', 'žica', 'žica', 'žica'],
+        theory: ['Z merjenjem napetosti in toka lahko izračunamo moč (P = U × I) in upornost (R = U/I). To so temeljna merjenja v elektrotehniki.'],
+        hints: ['Voltmeter vzporedno s svetilko', 'Ampermeter zaporedno v krog', 'Oba merilnika morata delovati'],
+        checkBothMeters: true
       }
     ];
 
@@ -172,6 +196,7 @@ export default class WorkspaceScene extends Phaser.Scene {
     makeButton(width - 140, 25, 'Izbira levela', () => this.scene.start('LevelScene'));
     makeButton(width - 140, 75, 'Lestvica', () => this.scene.start('ScoreboardScene', { cameFromMenu: false }));
     makeButton(width - 140, 125, 'Preveri krog', () => this.checkCircuit());
+    makeButton(width - 140, 175, 'Namig', () => this.showHint());
 
     const panelWidth = 150;
     this.add.rectangle(0, 0, panelWidth, height, 0xc0c0c0).setOrigin(0);
@@ -229,95 +254,6 @@ export default class WorkspaceScene extends Phaser.Scene {
     }, this.simulationDelay);
   }
 
-  createCircuitInfoPanel() {
-    const { width, height } = this.cameras.main;
-
-    this.circuitInfoPanel = this.add.container(width - 140, 350);
-    this.circuitInfoPanel.setDepth(100);
-
-    const panelBg = this.add.rectangle(0, 0, 200, 180, 0x2c2c2c, 0.95);
-    panelBg.setStrokeStyle(2, 0xffffff);
-
-    const title = this.add.text(0, -72, 'Meritve', {
-      fontSize: '16px',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
-
-    const separator = this.add.rectangle(0, -55, 180, 1, 0xffffff);
-
-    this.voltageText = this.add.text(-85, -40, 'Napetost: -- V', {
-      fontSize: '14px',
-      color: '#ffcc00'
-    });
-
-    this.resistanceText = this.add.text(-85, -15, 'Upornost: -- Ω', {
-      fontSize: '14px',
-      color: '#ff9900'
-    });
-
-    this.currentText = this.add.text(-85, 10, 'Tok: -- A', {
-      fontSize: '14px',
-      color: '#00ccff'
-    });
-
-    this.powerText = this.add.text(-85, 35, 'Moč: -- W', {
-      fontSize: '14px',
-      color: '#ff6699'
-    });
-
-    this.statusText = this.add.text(0, 65, '', {
-      fontSize: '12px',
-      color: '#aaaaaa',
-      align: 'center'
-    }).setOrigin(0.5);
-
-    this.circuitInfoPanel.add([
-      panelBg,
-      title,
-      separator,
-      this.voltageText,
-      this.resistanceText,
-      this.currentText,
-      this.powerText,
-      this.statusText
-    ]);
-  }
-
-  updateCircuitInfoPanel(result) {
-    if (!result) {
-      this.voltageText.setText('Napetost: -- V');
-      this.resistanceText.setText('Upornost: -- Ω');
-      this.currentText.setText('Tok: -- A');
-      this.powerText.setText('Moč: -- W');
-      this.statusText.setText('');
-      this.statusText.setColor('#aaaaaa');
-      return;
-    }
-
-    if (result.closed) {
-      const voltage = result.totalVoltage || 0;
-      const current = result.current || 0;
-      const power = voltage * current;
-
-      const resistance = current > 0 ? voltage / current : Infinity;
-
-      this.voltageText.setText(`Napetost: ${voltage.toFixed(2)} V`);
-      this.resistanceText.setText(`Upornost: ${resistance < 10000 ? resistance.toFixed(2) : '∞'} Ω`);
-      this.currentText.setText(`Tok: ${current.toFixed(3)} A`);
-      this.powerText.setText(`Moč: ${power.toFixed(3)} W`);
-      this.statusText.setText('Krog sklenjen');
-      this.statusText.setColor('#00ff00');
-    } else {
-      this.voltageText.setText('Napetost: 0 V');
-      this.resistanceText.setText('Upornost: ∞ Ω');
-      this.currentText.setText('Tok: 0 A');
-      this.powerText.setText('Moč: 0 W');
-      this.statusText.setText('Krog odprt');
-      this.statusText.setColor('#ff0000');
-    }
-  }
-
   runSimulation() {
     if (this.isSimulationRunning) {
       return null;
@@ -330,8 +266,6 @@ export default class WorkspaceScene extends Phaser.Scene {
       this.circuitVisuals.resetAllVisuals(this.placedComponents);
 
       const result = this.graph.simulate();
-
-      this.updateCircuitInfoPanel(result);
 
       if (result) {
         this.circuitVisuals.updateComponentVisuals(result, this.placedComponents, this.graph);
@@ -386,7 +320,6 @@ export default class WorkspaceScene extends Phaser.Scene {
       }
     }
 
-    this.updateCircuitInfoPanel(null);
     this.checkText.setText('');
     this.sim = undefined;
   }
@@ -791,6 +724,7 @@ export default class WorkspaceScene extends Phaser.Scene {
     const placedTypes = this.placedComponents.map(comp => comp.getData('type'));
     this.checkText.setStyle({ color: '#cc0000' });
 
+    // Preveri osnovne zahteve
     if (!currentChallenge.requiredComponents.every(req => placedTypes.includes(req))) {
       this.checkText.setText('Manjkajo komponente za krog.');
       return;
@@ -806,25 +740,121 @@ export default class WorkspaceScene extends Phaser.Scene {
       return;
     }
 
+    // Posebna preverjanja za posamezne nivoe
+    let levelSpecificCheck = true;
+    let levelMessage = '';
+
+    switch (this.currentChallengeIndex) {
+      case 5: // Nivo 6 - Merjenje napetosti
+        const voltmeter = this.placedComponents.find(c => c.getData('type') === 'voltmeter');
+        if (voltmeter) {
+          const logicComp = voltmeter.getData('logicComponent');
+          if (logicComp && logicComp.measurement > 0 && logicComp.measurement < 9) {
+            levelSpecificCheck = true;
+          } else {
+            levelSpecificCheck = false;
+            levelMessage = 'Voltmetr ne meri pravilno! Poveži ga vzporedno s svetilko.';
+          }
+        }
+        break;
+
+      case 6: // Nivo 7 - Merjenje toka
+        const ammeter = this.placedComponents.find(c => c.getData('type') === 'ampermeter');
+        if (ammeter) {
+          const logicComp = ammeter.getData('logicComponent');
+          if (logicComp && logicComp.measurement > 0) {
+            levelSpecificCheck = true;
+          } else {
+            levelSpecificCheck = false;
+            levelMessage = 'Ampermetr ne meri toka! Poveži ga zaporedno v krog.';
+          }
+        }
+        break;
+
+      case 7: // Nivo 8 - Delitev napetosti
+        const resistors = this.placedComponents.filter(c => c.getData('type') === 'upor');
+        if (resistors.length >= 2) {
+          // Preveri, ali so upori zaporedno
+          levelSpecificCheck = true; // Poenostavljeno preverjanje
+        }
+        break;
+
+      case 8: // Nivo 9 - Kratek stik
+        // Preveri, ali svetilka ne sveti (kratek stik)
+        const bulbs = this.placedComponents.filter(c => c.getData('type') === 'svetilka');
+        const anyBulbOn = bulbs.some(bulb => {
+          const logicComp = bulb.getData('logicComponent');
+          return logicComp && logicComp.is_on;
+        });
+
+        if (anyBulbOn) {
+          levelSpecificCheck = false;
+          levelMessage = 'Svetilka še vedno sveti! Dodaj žico čez svetilko za kratek stik.';
+        } else {
+          levelSpecificCheck = true;
+        }
+        break;
+
+      case 9: // Nivo 10 - Oba merilnika
+        const hasVoltmeter = this.placedComponents.some(c => c.getData('type') === 'voltmeter');
+        const hasAmmeter = this.placedComponents.some(c => c.getData('type') === 'ampermeter');
+
+        if (!hasVoltmeter || !hasAmmeter) {
+          levelSpecificCheck = false;
+          levelMessage = 'Potrebuješ oba merilnika!';
+        } else {
+          const voltmeter = this.placedComponents.find(c => c.getData('type') === 'voltmeter');
+          const ammeter = this.placedComponents.find(c => c.getData('type') === 'ampermeter');
+
+          const voltLogic = voltmeter.getData('logicComponent');
+          const ampLogic = ammeter.getData('logicComponent');
+
+          if (voltLogic && ampLogic && voltLogic.measurement > 0 && ampLogic.measurement > 0) {
+            levelSpecificCheck = true;
+
+            // Izračunaj upornost svetilke
+            const resistance = voltLogic.measurement / ampLogic.measurement;
+            levelMessage = `Upornost svetilke: ${resistance.toFixed(1)}Ω`;
+          } else {
+            levelSpecificCheck = false;
+            levelMessage = 'Oba merilnika morata meriti!';
+          }
+        }
+        break;
+    }
+
+    if (!levelSpecificCheck) {
+      this.checkText.setText(levelMessage);
+      return;
+    }
+
+
     this.checkText.setStyle({ color: '#00aa00' });
     this.checkText.setText('Čestitke! Krog je pravilen.');
     this.addPoints(10);
-    const currentLevel = parseInt(localStorage.getItem('currentCircuitChallengeIndex') || '0');
-    const highestReached = parseInt(localStorage.getItem('highestCircuitChallengeIndex') || '0');
-
-    if (currentLevel >= highestReached) {
-      const nextLevel = currentLevel + 1;
-      localStorage.setItem('highestCircuitChallengeIndex', nextLevel.toString());
-      localStorage.setItem('currentCircuitChallengeIndex', nextLevel.toString());
-    }
 
     if (currentChallenge.theory) {
       this.showTheory(currentChallenge.theory);
     } else {
-      this.checkText.setStyle({ color: '#00aa00' });
-      this.checkText.setText('Čestitke! Krog je pravilen.');
-      this.addPoints(10);
       this.time.delayedCall(2000, () => this.nextChallenge());
+    }
+  }
+
+  showHint() {
+    const currentChallenge = this.circuitChallenges[this.currentChallengeIndex];
+    if (currentChallenge.hints) {
+      const randomHint = currentChallenge.hints[Math.floor(Math.random() * currentChallenge.hints.length)];
+
+      const hintText = this.add.text(this.cameras.main.width / 2, 100, `Namig: ${randomHint}`, {
+        fontSize: '18px',
+        color: '#ffcc00',
+        backgroundColor: '#000000aa',
+        padding: { x: 15, y: 10 }
+      }).setOrigin(0.5).setDepth(100);
+
+      this.time.delayedCall(5000, () => {
+        hintText.destroy();
+      });
     }
   }
 
