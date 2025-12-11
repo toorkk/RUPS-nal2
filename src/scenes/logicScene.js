@@ -1538,7 +1538,7 @@ testNotGateFunctionality() {
     this.inputStates.A = 0;
     this.inputStates.B = 0;
     this.updateInputVisuals();
-    this.propagateAllSignals();
+    this.wireSystem.propagateAllSignals();
     
     // Give time for signals to propagate
     setTimeout(() => {
@@ -1553,7 +1553,7 @@ testNotGateFunctionality() {
         this.inputStates.A = 1;
         this.inputStates.B = 1;
         this.updateInputVisuals();
-        this.propagateAllSignals();
+        this.wireSystem.propagateAllSignals();
         
         setTimeout(() => {
             if (this.outputState !== 0) {
@@ -1567,7 +1567,7 @@ testNotGateFunctionality() {
             this.inputStates.A = 0;
             this.inputStates.B = 0;
             this.updateInputVisuals();
-            this.propagateAllSignals();
+            this.wireSystem.propagateAllSignals();
             
             console.log(`NOT gate test ${allTestsPassed ? 'PASSED' : 'FAILED'}`);
             

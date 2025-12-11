@@ -833,6 +833,11 @@ export default class WorkspaceScene extends Phaser.Scene {
     this.checkText.setText('Čestitke! Krog je pravilen.');
     this.addPoints(10);
 
+    const currentHighest = parseInt(localStorage.getItem('highestCircuitChallengeIndex') || '0');
+    if (this.currentChallengeIndex >= currentHighest) {
+      localStorage.setItem('highestCircuitChallengeIndex', (this.currentChallengeIndex + 1).toString());
+    }
+
     if (currentChallenge.theory) {
       this.showTheory(currentChallenge.theory);
     } else {
